@@ -1,5 +1,37 @@
-export 'riwayat_screen.dart';
+import 'package:flutter/material.dart';
 
-import 'riwayat_screen.dart';
+import '../widgets/empty_state_view.dart';
 
-typedef HistoryScreen = RiwayatScreen;
+class HistoryScreen extends StatelessWidget {
+  const HistoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F7),
+      appBar: AppBar(
+        title: Text(
+          'Riwayat',
+          style: Theme.of(context).textTheme.titleLarge
+              ?.copyWith(color: Colors.white),
+        ),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0C8259), Color(0xFF054F34)],
+            ),
+          ),
+        ),
+      ),
+      body: const EmptyStateView(
+        icon: Icons.history,
+        title: "Belum ada riwayat",
+        subtitle:
+            "Riwayat ibadah akan muncul setelah jadwal pertama dijalankan",
+      ),
+    );
+  }
+}

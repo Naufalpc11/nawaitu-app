@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'dashboard_screen.dart';
-import 'jadwal_screen.dart';
-import 'riwayat_screen.dart';
+import 'schedule_screen.dart'; // Panggil nama file bahasa Inggris
+import 'history_screen.dart'; // Panggil nama file bahasa Inggris
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -12,12 +12,12 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0; // Default buka halaman pertama
+  int _selectedIndex = 0;
 
   final List<Widget> _screens = const [
     DashboardScreen(),
-    JadwalScreen(),
-    RiwayatScreen(),
+    ScheduleScreen(),
+    HistoryScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -33,11 +33,8 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: const Color(0xFF0C8259), // Primary Green
+        selectedItemColor: const Color(0xFF0C8259),
         unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
-        elevation: 8,
-        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -46,7 +43,7 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today),
+            activeIcon: Icon(Icons.calendar_month),
             label: 'Jadwal',
           ),
           BottomNavigationBarItem(

@@ -58,6 +58,19 @@ flutter:
   uses-material-design: true
   assets:
     - assets/image/icon/
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/manrope-regular.otf
+          weight: 400
+        - asset: assets/fonts/manrope-medium.otf
+          weight: 500
+        - asset: assets/fonts/manrope-semibold.otf
+          weight: 600
+        - asset: assets/fonts/manrope-bold.otf
+          weight: 700
+        - asset: assets/fonts/manrope-extrabold.otf
+          weight: 800
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

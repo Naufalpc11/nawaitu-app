@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/custom_widgets.dart';
+import '../widgets/schedule_card.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Mengambil lebar layar untuk kebutuhan responsivitas
     final double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C8259), // Primary Green
-      body: SafeArea(
-        child: Container(
-          width: screenWidth,
-          color: const Color(0xFF0C8259),
+      body: Container(
+        width: screenWidth,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF042F1E), // Very Dark Green (gelap di kiri atas)
+              Color(0xFF0C8259), // Primary Green (terang di kanan bawah)
+            ],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ==========================================
-              // BAGIAN ATAS: HEADER
+              // HEADER
               // ==========================================
               Padding(
                 padding: const EdgeInsets.only(
@@ -32,73 +41,71 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Assalamu'alaikum",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "Senin, 8 September 2026",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
+                      // ignore: deprecated_member_use
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            // ignore: deprecated_member_use
+                            color: Colors.white.withOpacity(0.9),
+                          ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       "08:30",
-                      style: TextStyle(
-                        fontSize: 56,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: -1,
-                      ),
+                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                            color: Colors.white,
+                          ),
                     ),
                   ],
                 ),
               ),
 
               // ==========================================
-              // BAGIAN TENGAH: PROGRESS CARD
+              // PROGRESS CARD (Kotak melayang di atas: 0xFF042F1E)
               // ==========================================
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Container(
                   padding: const EdgeInsets.all(20.0),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF096343), // Dark Green
+                    color: const Color(0xFF042F1E),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
                     children: [
-                      const Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "3 Jadwal Hari Ini",
-                            style: TextStyle(
-                              color: Color(0xFF67C29F), // Text Highlight Mint
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: const Color(0xFF67C29F),
+                                ),
                           ),
                           Text(
                             "2/3 Terlaksana",
-                            style: TextStyle(
-                              color: Color(0xFF67C29F), // Text Highlight Mint
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: const Color(0xFF67C29F),
+                                ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Progress Bar menggunakan Stack
                       Stack(
                         children: [
-                          // Background Bar
                           Container(
                             height: 8,
                             width: double.infinity,
@@ -107,12 +114,11 @@ class DashboardScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
-                          // Foreground Progress Bar (66% dari lebar container)
                           Container(
                             height: 8,
                             width: (screenWidth - 88) * 0.66,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF16C289), // Mint Green
+                              color: const Color(0xFF16C289),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -126,13 +132,13 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // ==========================================
-              // BAGIAN BAWAH: SCHEDULE LIST AREA
+              // AREA BAWAH: SCHEDULE LIST (Light Gray: 0xFFF7F7F7)
               // ==========================================
               Expanded(
                 child: Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFF7F7F7), // Light Gray Background
+                    color: Color(0xFFF7F7F7),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(32),
                       topRight: Radius.circular(32),
@@ -142,16 +148,11 @@ class DashboardScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Jadwal Hari Ini",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 16),
-                      // List Jadwal
                       Expanded(
                         child: ListView(
                           physics: const BouncingScrollPhysics(),
