@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../database/mock_data.dart';
 import '../models/history_model.dart';
 import '../widgets/empty_state_view.dart';
+import '../widgets/history_card.dart';
 import 'detail_history_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -66,114 +67,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               itemCount: _histories.length,
               itemBuilder: (context, index) {
                 final history = _histories[index];
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => _navigateToDetail(history),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Info Riwayat (Kiri)
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    history.title,
-                                    style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium ??
-                                        const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black87,
-                                        ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    history.date,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.access_time,
-                                        size: 14,
-                                        color: Colors.grey,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        history.scheduledTime,
-                                        style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall
-                                                ?.copyWith(
-                                                  color: Colors.grey,
-                                                ) ??
-                                            const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(width: 12),
-
-                            // Badge Status Pill (Kanan)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: history.isCompleted
-                                    ? const Color(0xFFD7F5E5)
-                                    : const Color(0xFFFDE6E6),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                history.isCompleted ? 'Terlaksana' : 'Terlewat',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: history.isCompleted
-                                      ? const Color(0xFF0D5C3A)
-                                      : const Color(0xFFE53935),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                return HistoryCard(
+                  history: history,
+                  onTap: () => _navigateToDetail(history),
                 );
               },
             ),

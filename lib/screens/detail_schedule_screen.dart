@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/schedule_model.dart';
+import '../widgets/day_selector.dart';
+import '../widgets/description_card.dart';
+import '../widgets/setting_tile.dart';
+import '../widgets/status_badge.dart';
 import 'edit_schedule_screen.dart';
 
 class DetailScheduleScreen extends StatefulWidget {
@@ -17,16 +21,6 @@ class DetailScheduleScreen extends StatefulWidget {
 
 class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
   late ScheduleModel _currentSchedule;
-
-  final List<String> _daysList = const [
-    'Ahd',
-    'Sen',
-    'Sel',
-    'Rab',
-    'Kam',
-    'Jum',
-    'Sab',
-  ];
 
   @override
   void initState() {
@@ -205,29 +199,8 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _currentSchedule.isActive
-                          ? const Color(0xFFD7F5E5)
-                          : const Color(0xFFEEEEEE),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _currentSchedule.isActive
-                          ? 'Status : Aktif'
-                          : 'Status : Nonaktif',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _currentSchedule.isActive
-                            ? const Color(0xFF0D5C3A)
-                            : Colors.grey.shade600,
-                      ),
-                    ),
+                  StatusBadge.activeSchedule(
+                    isActive: _currentSchedule.isActive,
                   ),
                 ],
               ),
@@ -245,40 +218,8 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: _daysList.map((day) {
-                final bool isSelected = _currentSchedule.days.contains(day);
-                return Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected ? const Color(0xFF0D5C3A) : Colors.white,
-                    border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFF0D5C3A)
-                          : Colors.grey.shade300,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    day,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : Colors.grey.shade700,
-                    ),
-                  ),
-                );
-              }).toList(),
+            DaySelector(
+              selectedDays: _currentSchedule.days,
             ),
 
             const SizedBox(height: 20),
@@ -293,24 +234,8 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF7D6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF9E79F)),
-              ),
-              child: Text(
-                _currentSchedule.description.isNotEmpty
-                    ? _currentSchedule.description
-                    : 'Tidak ada catatan khusus.',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-              ),
+            DescriptionCard(
+              text: _currentSchedule.description,
             ),
 
             const SizedBox(height: 20),
@@ -327,101 +252,43 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
             const SizedBox(height: 12),
 
             // Maksimal Notifikasi
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Maksimal Notifikasi',
-                  style: TextStyle(fontSize: 14, color: Colors.black87),
+            SettingTile(
+              label: 'Maksimal Notifikasi',
+              icon: Icons.notifications_active_outlined,
+              iconColor: const Color(0xFFF59E0B),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              trailingWidget: Text(
+                _currentSchedule.maxNotification,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.notifications_active_outlined,
-                        size: 18,
-                        color: Color(0xFFF59E0B),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _currentSchedule.maxNotification,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
 
             const SizedBox(height: 12),
 
             // Jeda (Snooze)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Jeda (Snooze)',
-                  style: TextStyle(fontSize: 14, color: Colors.black87),
+            SettingTile(
+              label: 'Jeda (Snooze)',
+              icon: Icons.alarm,
+              iconColor: const Color(0xFFF59E0B),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              trailingWidget: Text(
+                _currentSchedule.snooze,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.alarm,
-                        size: 18,
-                        color: Color(0xFFF59E0B),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _currentSchedule.snooze,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
@@ -429,4 +296,3 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
     );
   }
 }
-

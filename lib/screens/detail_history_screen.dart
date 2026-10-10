@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/history_model.dart';
+import '../widgets/status_badge.dart';
 
 class DetailHistoryScreen extends StatelessWidget {
   final HistoryModel history;
@@ -86,42 +87,16 @@ class DetailHistoryScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Container(
+                  StatusBadge.fromStatus(
+                    isCompleted: history.isCompleted,
+                    icon: history.isCompleted
+                        ? Icons.keyboard_arrow_down
+                        : Icons.close,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 6,
                     ),
-                    decoration: BoxDecoration(
-                      color: history.isCompleted
-                          ? const Color(0xFFD7F5E5)
-                          : const Color(0xFFFDE6E6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          history.isCompleted ? 'Terlaksana' : 'Terlewat',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: history.isCompleted
-                                ? const Color(0xFF0D5C3A)
-                                : const Color(0xFFE53935),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          history.isCompleted
-                              ? Icons.keyboard_arrow_down
-                              : Icons.close,
-                          size: 16,
-                          color: history.isCompleted
-                              ? const Color(0xFF0D5C3A)
-                              : const Color(0xFFE53935),
-                        ),
-                      ],
-                    ),
+                    fontSize: 13,
                   ),
                 ],
               ),
@@ -214,4 +189,3 @@ class DetailHistoryScreen extends StatelessWidget {
     );
   }
 }
-
