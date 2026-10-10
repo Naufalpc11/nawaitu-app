@@ -3,7 +3,7 @@ import 'package:nawaitu/main.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const NawaituApp());
+    await tester.pumpWidget(const MyApp());
     expect(find.text("Assalamu'alaikum"), findsOneWidget);
   });
 }

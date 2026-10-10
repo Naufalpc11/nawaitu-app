@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'dashboard_screen.dart';
-import 'schedule_screen.dart'; // Panggil nama file bahasa Inggris
-import 'history_screen.dart'; // Panggil nama file bahasa Inggris
+import 'schedule_screen.dart';
+import 'history_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
