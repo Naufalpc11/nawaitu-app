@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_routes.dart';
 import '../database/mock_data.dart';
 import '../models/schedule_model.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/schedule_card.dart';
-import 'create_schedule_screen.dart';
-import 'detail_schedule_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -24,14 +23,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _navigateToCreate() async {
-    final result = await Navigator.push<ScheduleModel>(
+    final result = await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CreateScheduleScreen(),
-      ),
+      AppRoutes.createSchedule,
     );
 
-    if (result != null) {
+    if (result is ScheduleModel) {
       setState(() {
         _schedules.add(result);
       });
@@ -48,11 +45,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Future<void> _navigateToDetail(int index) async {
     final schedule = _schedules[index];
-    final result = await Navigator.push<dynamic>(
+    final result = await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailScheduleScreen(schedule: schedule),
-      ),
+      AppRoutes.detailSchedule,
+      arguments: schedule,
     );
 
     if (!mounted) return;

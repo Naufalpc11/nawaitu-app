@@ -8,11 +8,11 @@ import '../widgets/setting_tile.dart';
 import '../widgets/time_picker_card.dart';
 
 class EditScheduleScreen extends StatefulWidget {
-  final ScheduleModel schedule;
+  final ScheduleModel? schedule;
 
   const EditScheduleScreen({
     super.key,
-    required this.schedule,
+    this.schedule,
   });
 
   @override
@@ -20,12 +20,14 @@ class EditScheduleScreen extends StatefulWidget {
 }
 
 class _EditScheduleScreenState extends State<EditScheduleScreen> {
-  late TimeOfDay _selectedTime;
+  ScheduleModel? _schedule;
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 8, minute: 30);
   late TextEditingController _titleController;
   late TextEditingController _descController;
-  late Set<String> _selectedDays;
-  late String _maxNotification;
-  late String _snooze;
+  Set<String> _selectedDays = {};
+  String _maxNotification = '5 Kali';
+  String _snooze = '15 Menit';
+  bool _isInitialized = false;
 
   final List<String> _maxNotificationOptions = const [
     '1 Kali',
@@ -42,28 +44,45 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    int hour = 8;
-    int minute = 30;
-    final parts = widget.schedule.time.split(':');
-    if (parts.length == 2) {
-      hour = int.tryParse(parts[0]) ?? 8;
-      minute = int.tryParse(parts[1]) ?? 30;
-    }
-    _selectedTime = TimeOfDay(hour: hour, minute: minute);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      final scheduleData = widget.schedule ??
+          (ModalRoute.of(context)?.settings.arguments as ScheduleModel?);
 
-    _titleController = TextEditingController(text: widget.schedule.title);
-    _descController = TextEditingController(text: widget.schedule.description);
-    _selectedDays = Set<String>.from(widget.schedule.days);
-    _maxNotification = widget.schedule.maxNotification;
-    _snooze = widget.schedule.snooze;
+      _schedule = scheduleData;
+
+      int hour = 8;
+      int minute = 30;
+      if (scheduleData != null) {
+        final parts = scheduleData.time.split(':');
+        if (parts.length == 2) {
+          hour = int.tryParse(parts[0]) ?? 8;
+          minute = int.tryParse(parts[1]) ?? 30;
+        }
+      }
+      _selectedTime = TimeOfDay(hour: hour, minute: minute);
+
+      _titleController = TextEditingController(
+        text: scheduleData?.title ?? '',
+      );
+      _descController = TextEditingController(
+        text: scheduleData?.description ?? '',
+      );
+      _selectedDays = Set<String>.from(scheduleData?.days ?? []);
+      _maxNotification = scheduleData?.maxNotification ?? '5 Kali';
+      _snooze = scheduleData?.snooze ?? '15 Menit';
+
+      _isInitialized = true;
+    }
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
+    if (_isInitialized) {
+      _titleController.dispose();
+      _descController.dispose();
+    }
     super.dispose();
   }
 
@@ -106,7 +125,19 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
     final String formattedTime =
         "${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}";
 
-    final updatedSchedule = widget.schedule.copyWith(
+    final baseSchedule = _schedule ??
+        ScheduleModel(
+          id: 'sch_${DateTime.now().millisecondsSinceEpoch}',
+          title: title,
+          time: formattedTime,
+          days: _selectedDays.toList(),
+          description: _descController.text.trim(),
+          maxNotification: _maxNotification,
+          snooze: _snooze,
+          isActive: true,
+        );
+
+    final updatedSchedule = baseSchedule.copyWith(
       title: title,
       time: formattedTime,
       days: _selectedDays.toList(),

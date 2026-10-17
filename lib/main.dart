@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import 'core/app_routes.dart';
+import 'screens/create_schedule_screen.dart';
+import 'screens/detail_history_screen.dart';
+import 'screens/detail_schedule_screen.dart';
+import 'screens/edit_schedule_screen.dart';
 import 'screens/main_navigation.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(const MyApp());
 }
 
@@ -46,7 +57,14 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainNavigation(),
+      initialRoute: AppRoutes.main,
+      routes: <String, WidgetBuilder>{
+        AppRoutes.main: (context) => const MainNavigation(),
+        AppRoutes.createSchedule: (context) => const CreateScheduleScreen(),
+        AppRoutes.detailSchedule: (context) => const DetailScheduleScreen(),
+        AppRoutes.editSchedule: (context) => const EditScheduleScreen(),
+        AppRoutes.detailHistory: (context) => const DetailHistoryScreen(),
+      },
     );
   }
 }

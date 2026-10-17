@@ -4,15 +4,18 @@ import '../models/history_model.dart';
 import '../widgets/status_badge.dart';
 
 class DetailHistoryScreen extends StatelessWidget {
-  final HistoryModel history;
+  final HistoryModel? history;
 
   const DetailHistoryScreen({
     super.key,
-    required this.history,
+    this.history,
   });
 
   @override
   Widget build(BuildContext context) {
+    final currentHistory = history ??
+        (ModalRoute.of(context)?.settings.arguments as HistoryModel);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -62,7 +65,7 @@ class DetailHistoryScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    history.scheduledTime,
+                    currentHistory.scheduledTime,
                     style: const TextStyle(
                       fontSize: 56,
                       fontWeight: FontWeight.bold,
@@ -71,7 +74,7 @@ class DetailHistoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    history.title,
+                    currentHistory.title,
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -80,7 +83,7 @@ class DetailHistoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    history.date,
+                    currentHistory.date,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade600,
@@ -88,8 +91,8 @@ class DetailHistoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   StatusBadge.fromStatus(
-                    isCompleted: history.isCompleted,
-                    icon: history.isCompleted
+                    isCompleted: currentHistory.isCompleted,
+                    icon: currentHistory.isCompleted
                         ? Icons.keyboard_arrow_down
                         : Icons.close,
                     padding: const EdgeInsets.symmetric(
@@ -141,7 +144,7 @@ class DetailHistoryScreen extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        history.scheduledTime,
+                        currentHistory.scheduledTime,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -169,11 +172,11 @@ class DetailHistoryScreen extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        history.actualTime,
+                        currentHistory.actualTime,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: history.isCompleted
+                          color: currentHistory.isCompleted
                               ? const Color(0xFF0D5C3A)
                               : const Color(0xFFE53935),
                         ),

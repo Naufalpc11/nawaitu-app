@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_routes.dart';
 import '../models/schedule_model.dart';
 import '../widgets/day_selector.dart';
 import '../widgets/description_card.dart';
 import '../widgets/setting_tile.dart';
 import '../widgets/status_badge.dart';
-import 'edit_schedule_screen.dart';
 
 class DetailScheduleScreen extends StatefulWidget {
-  final ScheduleModel schedule;
+  final ScheduleModel? schedule;
 
   const DetailScheduleScreen({
     super.key,
-    required this.schedule,
+    this.schedule,
   });
 
   @override
@@ -21,22 +21,44 @@ class DetailScheduleScreen extends StatefulWidget {
 
 class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
   late ScheduleModel _currentSchedule;
+  bool _isInitialized = false;
+
 
   @override
-  void initState() {
-    super.initState();
-    _currentSchedule = widget.schedule;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      if (widget.schedule != null) {
+        _currentSchedule = widget.schedule!;
+      } else {
+        final args = ModalRoute.of(context)?.settings.arguments;
+        if (args is ScheduleModel) {
+          _currentSchedule = args;
+        } else {
+          _currentSchedule = const ScheduleModel(
+            id: '',
+            title: '',
+            time: '08:30',
+            days: [],
+            description: '',
+            maxNotification: '5 Kali',
+            snooze: '15 Menit',
+            isActive: false,
+          );
+        }
+      }
+      _isInitialized = true;
+    }
   }
 
   Future<void> _navigateToEdit() async {
-    final updated = await Navigator.push<ScheduleModel>(
+    final updated = await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditScheduleScreen(schedule: _currentSchedule),
-      ),
+      AppRoutes.editSchedule,
+      arguments: _currentSchedule,
     );
 
-    if (updated != null) {
+    if (updated is ScheduleModel) {
       setState(() {
         _currentSchedule = updated;
       });

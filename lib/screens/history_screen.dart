@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_routes.dart';
 import '../database/mock_data.dart';
 import '../models/history_model.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/history_card.dart';
-import 'detail_history_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -23,11 +23,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _navigateToDetail(HistoryModel history) {
-    Navigator.push(
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailHistoryScreen(history: history),
-      ),
+      AppRoutes.detailHistory,
+      arguments: history,
     );
   }
 
