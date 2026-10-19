@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../database/mock_data.dart';
 import '../widgets/schedule_card.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -8,7 +9,10 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-
+    final histories = dummyHistories;
+    final int total = histories.length;
+    final int completed = histories.where((item) => item.isCompleted).length;
+    final double progress = total > 0 ? (completed / total) : 0.0;
     return Scaffold(
       body: Container(
         width: screenWidth,
@@ -82,12 +86,14 @@ class DashboardScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "3 Jadwal Hari Ini",
+                            // Ganti "3 Jadwal Hari Ini" menjadi:
+                            "$total Jadwal Hari Ini",
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: const Color(0xFF67C29F)),
                           ),
                           Text(
-                            "2/3 Terlaksana",
+                            // Ganti "2/3 Terlaksana" menjadi:
+                            "$completed/$total Terlaksana",
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: const Color(0xFF67C29F)),
                           ),
@@ -106,7 +112,8 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           Container(
                             height: 8,
-                            width: (screenWidth - 88) * 0.66,
+                            // Ganti angka paten 0.66 menjadi variabel progress:
+                            width: (screenWidth - 88) * progress,
                             decoration: BoxDecoration(
                               color: const Color(0xFF16C289),
                               borderRadius: BorderRadius.circular(4),
@@ -144,26 +151,18 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Expanded(
-                        child: ListView(
+                        child: ListView.builder(
                           physics: const BouncingScrollPhysics(),
-                          children: const [
-                            ScheduleCard(
-                              title: "Sholat Tahajud",
-                              time: "04:30",
-                              isDone: true,
-                            ),
-                            ScheduleCard(
-                              title: "Sholat Dhuha",
-                              time: "08:10",
-                              isDone: true,
-                            ),
-                            ScheduleCard(
-                              title: "Sholat Taubat",
-                              time: "13:00",
-                              isDone: false,
-                            ),
-                            SizedBox(height: 16),
-                          ],
+                          padding: const EdgeInsets.only(bottom: 16),
+                          itemCount: histories.length,
+                          itemBuilder: (context, index) {
+                            final history = histories[index];
+                            return ScheduleCard(
+                              title: history.title,
+                              time: history.scheduledTime,
+                              isDone: history.isCompleted,
+                            );
+                          },
                         ),
                       ),
                     ],
