@@ -23,10 +23,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _navigateToCreate() async {
-    final result = await Navigator.pushNamed(
-      context,
-      AppRoutes.createSchedule,
-    );
+    final result = await Navigator.pushNamed(context, AppRoutes.createSchedule);
 
     if (result is ScheduleModel) {
       setState(() {
@@ -112,11 +109,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.18),
                 ),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 24),
               ),
             ),
           ),

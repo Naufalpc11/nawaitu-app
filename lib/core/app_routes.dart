@@ -5,4 +5,3 @@ class AppRoutes {
   static const String editSchedule = '/edit-schedule';
   static const String detailHistory = '/detail-history';
 }
-

@@ -134,10 +134,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Card Picker Waktu
-            TimePickerCard(
-              timeString: formattedTime,
-              onTap: _pickTime,
-            ),
+            TimePickerCard(timeString: formattedTime, onTap: _pickTime),
 
             const SizedBox(height: 24),
 
@@ -167,8 +164,10 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                 controller: _titleController,
                 decoration: InputDecoration(
                   hintText: 'Masukkan nama ibadah... (cth: Sholat Dhuha)',
-                  hintStyle:
-                      TextStyle(fontSize: 14, color: Colors.grey.shade400),
+                  hintStyle: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade400,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
@@ -320,10 +319,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
             const SizedBox(height: 32),
 
             // Tombol Simpan Jadwal
-            PrimaryButton(
-              text: 'Simpan Jadwal',
-              onPressed: _saveSchedule,
-            ),
+            PrimaryButton(text: 'Simpan Jadwal', onPressed: _saveSchedule),
           ],
         ),
       ),

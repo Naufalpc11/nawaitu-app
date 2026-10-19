@@ -43,25 +43,23 @@ class DashboardScreen extends StatelessWidget {
                   children: [
                     Text(
                       "Assalamu'alaikum",
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                          ),
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(color: Colors.white),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "Senin, 8 September 2026",
                       // ignore: deprecated_member_use
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            // ignore: deprecated_member_use
-                            color: Colors.white.withOpacity(0.9),
-                          ),
+                        // ignore: deprecated_member_use
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       "08:30",
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                            color: Colors.white,
-                          ),
+                      style: Theme.of(context).textTheme.displayLarge
+                          ?.copyWith(color: Colors.white),
                     ),
                   ],
                 ),
@@ -85,21 +83,13 @@ class DashboardScreen extends StatelessWidget {
                         children: [
                           Text(
                             "3 Jadwal Hari Ini",
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: const Color(0xFF67C29F),
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: const Color(0xFF67C29F)),
                           ),
                           Text(
                             "2/3 Terlaksana",
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: const Color(0xFF67C29F),
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: const Color(0xFF67C29F)),
                           ),
                         ],
                       ),
