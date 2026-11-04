@@ -22,12 +22,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _histories = List.from(dummyHistories);
   }
 
-  void _navigateToDetail(HistoryModel history) {
-    Navigator.pushNamed(
+  Future<void> _navigateToDetail(int index) async {
+    final history = _histories[index];
+    final result = await Navigator.pushNamed(
       context,
       AppRoutes.detailHistory,
       arguments: history,
     );
+
+    if (result is HistoryModel) {
+      setState(() {
+        _histories[index] = result;
+      });
+
+      // Sinkronkan ke dummyHistories agar Dashboard ter-update otomatis
+      final dummyIdx = dummyHistories.indexWhere((h) => h.id == result.id);
+      if (dummyIdx != -1) {
+        dummyHistories[dummyIdx] = result;
+      }
+    }
   }
 
   @override
@@ -68,7 +81,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 final history = _histories[index];
                 return HistoryCard(
                   history: history,
-                  onTap: () => _navigateToDetail(history),
+                  onTap: () => _navigateToDetail(index),
                 );
               },
             ),
