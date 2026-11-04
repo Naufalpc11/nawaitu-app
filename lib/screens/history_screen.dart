@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_routes.dart';
-import '../database/mock_data.dart';
+import '../database/database_helper.dart';
 import '../models/history_model.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/history_card.dart';
@@ -14,12 +14,23 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  late List<HistoryModel> _histories;
+  List<HistoryModel> _histories = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _histories = List.from(dummyHistories);
+    _loadHistories();
+  }
+
+  Future<void> _loadHistories() async {
+    final data = await DatabaseHelper.instance.getAllHistories();
+    if (mounted) {
+      setState(() {
+        _histories = data;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _navigateToDetail(int index) async {
@@ -31,15 +42,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (result is HistoryModel) {
+      await DatabaseHelper.instance.updateHistoryStatus(
+        id: result.id,
+        isCompleted: result.isCompleted,
+        actualTime: result.actualTime,
+      );
       setState(() {
         _histories[index] = result;
       });
-
-      // Sinkronkan ke dummyHistories agar Dashboard ter-update otomatis
-      final dummyIdx = dummyHistories.indexWhere((h) => h.id == result.id);
-      if (dummyIdx != -1) {
-        dummyHistories[dummyIdx] = result;
-      }
     }
   }
 
@@ -67,24 +77,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ),
       ),
-      body: _histories.isEmpty
-          ? const EmptyStateView(
-              icon: Icons.history,
-              title: 'Belum ada riwayat',
-              subtitle:
-                  'Riwayat ibadah akan muncul setelah jadwal pertama dijalankan',
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF0D5C3A)),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: _histories.length,
-              itemBuilder: (context, index) {
-                final history = _histories[index];
-                return HistoryCard(
-                  history: history,
-                  onTap: () => _navigateToDetail(index),
-                );
-              },
-            ),
+          : _histories.isEmpty
+              ? const EmptyStateView(
+                  icon: Icons.history,
+                  title: 'Belum ada riwayat',
+                  subtitle:
+                      'Riwayat ibadah akan muncul setelah jadwal pertama dijalankan',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _histories.length,
+                  itemBuilder: (context, index) {
+                    final history = _histories[index];
+                    return HistoryCard(
+                      history: history,
+                      onTap: () => _navigateToDetail(index),
+                    );
+                  },
+                ),
     );
   }
 }

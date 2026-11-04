@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_routes.dart';
-import '../database/mock_data.dart';
+import '../database/database_helper.dart';
 import '../models/schedule_model.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/schedule_card.dart';
@@ -14,20 +14,32 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  late List<ScheduleModel> _schedules;
+  List<ScheduleModel> _schedules = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _schedules = List.from(dummySchedules);
+    _loadSchedules();
+  }
+
+  Future<void> _loadSchedules() async {
+    final data = await DatabaseHelper.instance.getAllSchedules();
+    if (mounted) {
+      setState(() {
+        _schedules = data;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _navigateToCreate() async {
     final result = await Navigator.pushNamed(context, AppRoutes.createSchedule);
 
     if (result is ScheduleModel) {
+      final inserted = await DatabaseHelper.instance.insertSchedule(result);
       setState(() {
-        _schedules.add(result);
+        _schedules.add(inserted);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -51,6 +63,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!mounted) return;
 
     if (result == 'delete') {
+      await DatabaseHelper.instance.deleteSchedule(schedule.id);
+      if (!mounted) return;
       setState(() {
         _schedules.removeAt(index);
       });
@@ -61,6 +75,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       );
     } else if (result is ScheduleModel) {
+      await DatabaseHelper.instance.updateSchedule(result);
+      if (!mounted) return;
       setState(() {
         _schedules[index] = result;
       });
@@ -115,30 +131,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ],
       ),
-      body: _schedules.isEmpty
-          ? const EmptyStateView(
-              icon: Icons.calendar_month,
-              title: 'Belum ada jadwal ibadah',
-              subtitle: 'Tap + untuk menambah jadwal baru',
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF0D5C3A)),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: _schedules.length,
-              itemBuilder: (context, index) {
-                final schedule = _schedules[index];
-                return ScheduleCard(
-                  title: schedule.title,
-                  time: schedule.time,
-                  isActive: schedule.isActive,
-                  onToggle: (newValue) {
-                    setState(() {
-                      _schedules[index] = schedule.copyWith(isActive: newValue);
-                    });
+          : _schedules.isEmpty
+              ? const EmptyStateView(
+                  icon: Icons.calendar_month,
+                  title: 'Belum ada jadwal ibadah',
+                  subtitle: 'Tap + untuk menambah jadwal baru',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _schedules.length,
+                  itemBuilder: (context, index) {
+                    final schedule = _schedules[index];
+                    return ScheduleCard(
+                      title: schedule.title,
+                      time: schedule.time,
+                      isActive: schedule.isActive,
+                      onToggle: (newValue) async {
+                        await DatabaseHelper.instance.toggleScheduleActive(
+                          schedule.id,
+                          newValue,
+                        );
+                        setState(() {
+                          _schedules[index] =
+                              schedule.copyWith(isActive: newValue);
+                        });
+                      },
+                      onTap: () => _navigateToDetail(index),
+                    );
                   },
-                  onTap: () => _navigateToDetail(index),
-                );
-              },
-            ),
+                ),
     );
   }
 }

@@ -1,18 +1,43 @@
 import 'package:flutter/material.dart';
 
-import '../database/mock_data.dart';
+import '../database/database_helper.dart';
+import '../models/history_model.dart';
 import '../widgets/schedule_card.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  List<HistoryModel> _histories = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistories();
+  }
+
+  Future<void> _loadHistories() async {
+    final data = await DatabaseHelper.instance.getAllHistories();
+    if (mounted) {
+      setState(() {
+        _histories = data;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final histories = dummyHistories;
-    final int total = histories.length;
-    final int completed = histories.where((item) => item.isCompleted).length;
+    final int total = _histories.length;
+    final int completed = _histories.where((item) => item.isCompleted).length;
     final double progress = total > 0 ? (completed / total) : 0.0;
+
     return Scaffold(
       body: Container(
         width: screenWidth,
@@ -86,13 +111,11 @@ class DashboardScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            // Ganti "3 Jadwal Hari Ini" menjadi:
                             "$total Jadwal Hari Ini",
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: const Color(0xFF67C29F)),
                           ),
                           Text(
-                            // Ganti "2/3 Terlaksana" menjadi:
                             "$completed/$total Terlaksana",
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: const Color(0xFF67C29F)),
@@ -112,7 +135,6 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           Container(
                             height: 8,
-                            // Ganti angka paten 0.66 menjadi variabel progress:
                             width: (screenWidth - 88) * progress,
                             decoration: BoxDecoration(
                               color: const Color(0xFF16C289),
@@ -151,19 +173,38 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Expanded(
-                        child: ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.only(bottom: 16),
-                          itemCount: histories.length,
-                          itemBuilder: (context, index) {
-                            final history = histories[index];
-                            return ScheduleCard(
-                              title: history.title,
-                              time: history.scheduledTime,
-                              isDone: history.isCompleted,
-                            );
-                          },
-                        ),
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF0D5C3A),
+                                ),
+                              )
+                            : _histories.isEmpty
+                                ? const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: 24.0),
+                                      child: Text(
+                                        'Belum ada jadwal ibadah hari ini',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    physics: const BouncingScrollPhysics(),
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    itemCount: _histories.length,
+                                    itemBuilder: (context, index) {
+                                      final history = _histories[index];
+                                      return ScheduleCard(
+                                        title: history.title,
+                                        time: history.scheduledTime,
+                                        isDone: history.isCompleted,
+                                      );
+                                    },
+                                  ),
                       ),
                     ],
                   ),

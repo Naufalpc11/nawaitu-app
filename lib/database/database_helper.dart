@@ -3,18 +3,17 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/history_model.dart';
 import '../models/schedule_model.dart';
+import 'database_tables.dart';
 
-/// DatabaseHelper untuk mengelola SQLite Database Lokal Nawaitu.
-/// Struktur tabel disusun 100% mengikuti Relational Diagram (ERD):
-/// - jadwal_ibadah
-/// - hari_jadwal (relasi 1-ke-N dari jadwal_ibadah)
-/// - riwayat_pelaksanaan (relasi 1-ke-N dari jadwal_ibadah)
+/// DatabaseHelper adalah Singleton Controller untuk mengelola SQLite Database Lokal Nawaitu.
+/// Menyediakan koneksi database dan antarmuka operasi CRUD lengkap untuk Jadwal dan Riwayat.
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
   DatabaseHelper._init();
 
+  /// Mendapatkan instance database SQLite (lazily opened)
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('nawaitu.db');
@@ -27,152 +26,31 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         // Mengaktifkan fitur Foreign Key constraint di SQLite
         await db.execute('PRAGMA foreign_keys = ON');
       },
-      onCreate: _createDB,
+      onCreate: (db, version) async {
+        // Membuat tabel kosong murni dari awal (tanpa data tiruan)
+        await DatabaseTables.createTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Menghapus data lama jika versi dinaikkan agar database kembali bersih dari awal
+        await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableHari}');
+        await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableRiwayat}');
+        await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableJadwal}');
+        await DatabaseTables.createTables(db);
+      },
     );
   }
 
-  Future<void> _createDB(Database db, int version) async {
-    // 1. Tabel jadwal_ibadah (Sesuai ERD)
-    await db.execute('''
-      CREATE TABLE jadwal_ibadah (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nama_jadwal TEXT NOT NULL,
-        deskripsi TEXT,
-        jam_pengingat TEXT NOT NULL,
-        max_popup INTEGER NOT NULL DEFAULT 5,
-        jeda_delay INTEGER NOT NULL DEFAULT 15,
-        is_active INTEGER NOT NULL DEFAULT 1
-      )
-    ''');
-
-    // 2. Tabel hari_jadwal (Sesuai ERD, relasi ke jadwal_ibadah)
-    await db.execute('''
-      CREATE TABLE hari_jadwal (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        jadwal_id INTEGER NOT NULL,
-        nama_hari TEXT NOT NULL,
-        FOREIGN KEY (jadwal_id) REFERENCES jadwal_ibadah (id) ON DELETE CASCADE
-      )
-    ''');
-
-    // 3. Tabel riwayat_pelaksanaan (Sesuai ERD, relasi ke jadwal_ibadah)
-    await db.execute('''
-      CREATE TABLE riwayat_pelaksanaan (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        jadwal_id INTEGER,
-        title TEXT NOT NULL,
-        tanggal TEXT NOT NULL,
-        jam_terjadwal TEXT NOT NULL,
-        jam_terlaksana TEXT NOT NULL,
-        status TEXT NOT NULL,
-        FOREIGN KEY (jadwal_id) REFERENCES jadwal_ibadah (id) ON DELETE SET NULL
-      )
-    ''');
-
-    // Seed Data Awal ke SQLite lokal agar saat pertama run aplikasi tidak kosong
-    await _seedInitialData(db);
-  }
-
-  Future<void> _seedInitialData(Database db) async {
-    // Seed 1: Sholat Dhuha
-    final idDhuha = await db.insert('jadwal_ibadah', {
-      'nama_jadwal': 'Sholat Dhuha',
-      'deskripsi':
-          'Mengerjakan sholat sunnah dhuha minimal 2 rakaat untuk kelancaran berkah dan pembuka rezeki di pagi hari.',
-      'jam_pengingat': '08:30',
-      'max_popup': 5,
-      'jeda_delay': 15,
-      'is_active': 1,
-    });
-    for (var hari in ['Ahd', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']) {
-      await db.insert('hari_jadwal', {'jadwal_id': idDhuha, 'nama_hari': hari});
-    }
-
-    // Seed 2: Sholat Tahajud
-    final idTahajud = await db.insert('jadwal_ibadah', {
-      'nama_jadwal': 'Sholat Tahajud',
-      'deskripsi':
-          'Sholat sunnah di sepertiga malam terakhir untuk memanjatkan doa, taubat, dan mendekatkan diri kepada Allah SWT.',
-      'jam_pengingat': '04:10',
-      'max_popup': 5,
-      'jeda_delay': 10,
-      'is_active': 1,
-    });
-    for (var hari in ['Ahd', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']) {
-      await db.insert(
-          'hari_jadwal', {'jadwal_id': idTahajud, 'nama_hari': hari});
-    }
-
-    // Seed 3: Baca Qur'an
-    final idQuran = await db.insert('jadwal_ibadah', {
-      'nama_jadwal': "Baca Qur’an",
-      'deskripsi':
-          'Membaca Al-Qur\'an minimal 1 maqra\' atau 1 juz setelah sholat Dzuhur sebagai penenang jiwa.',
-      'jam_pengingat': '12:00',
-      'max_popup': 3,
-      'jeda_delay': 15,
-      'is_active': 1,
-    });
-    for (var hari in ['Sen', 'Sel', 'Rab', 'Kam', 'Jum']) {
-      await db.insert('hari_jadwal', {'jadwal_id': idQuran, 'nama_hari': hari});
-    }
-
-    // Seed 4: Dzikir Pagi
-    final idDzikir = await db.insert('jadwal_ibadah', {
-      'nama_jadwal': 'Dzikir Pagi',
-      'deskripsi':
-          'Membaca rangkaian dzikir pagi Al-Ma\'tsurat sebagai benteng perlindungan hari dari godaan dan marabahaya.',
-      'jam_pengingat': '06:00',
-      'max_popup': 3,
-      'jeda_delay': 5,
-      'is_active': 0,
-    });
-    for (var hari in ['Ahd', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']) {
-      await db.insert(
-          'hari_jadwal', {'jadwal_id': idDzikir, 'nama_hari': hari});
-    }
-
-    // Seed Riwayat Pelaksanaan Awal
-    await db.insert('riwayat_pelaksanaan', {
-      'jadwal_id': idDhuha,
-      'title': 'Sholat Dhuha',
-      'tanggal': 'Jumat, 4 September 2026',
-      'jam_terjadwal': '08:30',
-      'jam_terlaksana': '08:40',
-      'status': 'terlaksana',
-    });
-
-    await db.insert('riwayat_pelaksanaan', {
-      'jadwal_id': idQuran,
-      'title': "Baca Qur’an",
-      'tanggal': 'Jumat, 4 September 2026',
-      'jam_terjadwal': '12:00',
-      'jam_terlaksana': '12:15',
-      'status': 'terlaksana',
-    });
-
-    await db.insert('riwayat_pelaksanaan', {
-      'jadwal_id': idTahajud,
-      'title': 'Sholat Tahajud',
-      'tanggal': 'Jumat, 5 September 2026',
-      'jam_terjadwal': '04:12',
-      'jam_terlaksana': '-',
-      'status': 'terlewat',
-    });
-
-    await db.insert('riwayat_pelaksanaan', {
-      'jadwal_id': idQuran,
-      'title': "Baca Qur’an",
-      'tanggal': 'Jumat, 6 September 2026',
-      'jam_terjadwal': '05:30',
-      'jam_terlaksana': '05:35',
-      'status': 'terlaksana',
-    });
+  /// Menghapus seluruh data agar kembali bersih dari awal (Reset Database)
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.delete(DatabaseTables.tableHari);
+    await db.delete(DatabaseTables.tableRiwayat);
+    await db.delete(DatabaseTables.tableJadwal);
   }
 
   // ==========================================
@@ -183,7 +61,7 @@ class DatabaseHelper {
   Future<List<ScheduleModel>> getAllSchedules() async {
     final db = await database;
     final List<Map<String, dynamic>> schedulesMap =
-        await db.query('jadwal_ibadah', orderBy: 'id ASC');
+        await db.query(DatabaseTables.tableJadwal, orderBy: 'id ASC');
 
     List<ScheduleModel> result = [];
 
@@ -192,7 +70,7 @@ class DatabaseHelper {
 
       // Ambil hari-hari untuk jadwal ini dari tabel hari_jadwal
       final List<Map<String, dynamic>> daysMap = await db.query(
-        'hari_jadwal',
+        DatabaseTables.tableHari,
         where: 'jadwal_id = ?',
         whereArgs: [scheduleId],
       );
@@ -215,7 +93,7 @@ class DatabaseHelper {
     return result;
   }
 
-  /// Menambah jadwal ibadah baru (dan relasi hari)
+  /// Menambah jadwal ibadah baru beserta relasi harinya
   Future<ScheduleModel> insertSchedule(ScheduleModel schedule) async {
     final db = await database;
 
@@ -225,7 +103,7 @@ class DatabaseHelper {
         int.tryParse(schedule.snooze.replaceAll(RegExp(r'[^0-9]'), '')) ?? 15;
 
     // 1. Simpan ke tabel jadwal_ibadah
-    final int newId = await db.insert('jadwal_ibadah', {
+    final int newId = await db.insert(DatabaseTables.tableJadwal, {
       'nama_jadwal': schedule.title,
       'deskripsi': schedule.description,
       'jam_pengingat': schedule.time,
@@ -236,7 +114,7 @@ class DatabaseHelper {
 
     // 2. Simpan hari-hari terpilih ke tabel hari_jadwal
     for (var hari in schedule.days) {
-      await db.insert('hari_jadwal', {
+      await db.insert(DatabaseTables.tableHari, {
         'jadwal_id': newId,
         'nama_hari': hari,
       });
@@ -245,7 +123,7 @@ class DatabaseHelper {
     return schedule.copyWith(id: newId.toString());
   }
 
-  /// Mengupdate jadwal ibadah yang ada
+  /// Mengupdate jadwal ibadah yang ada beserta relasi harinya
   Future<int> updateSchedule(ScheduleModel schedule) async {
     final db = await database;
     final int? scheduleId = int.tryParse(schedule.id);
@@ -258,7 +136,7 @@ class DatabaseHelper {
 
     // 1. Update data utama jadwal
     final count = await db.update(
-      'jadwal_ibadah',
+      DatabaseTables.tableJadwal,
       {
         'nama_jadwal': schedule.title,
         'deskripsi': schedule.description,
@@ -272,9 +150,13 @@ class DatabaseHelper {
     );
 
     // 2. Hapus hari lama dan masukkan hari baru
-    await db.delete('hari_jadwal', where: 'jadwal_id = ?', whereArgs: [scheduleId]);
+    await db.delete(
+      DatabaseTables.tableHari,
+      where: 'jadwal_id = ?',
+      whereArgs: [scheduleId],
+    );
     for (var hari in schedule.days) {
-      await db.insert('hari_jadwal', {
+      await db.insert(DatabaseTables.tableHari, {
         'jadwal_id': scheduleId,
         'nama_hari': hari,
       });
@@ -290,7 +172,7 @@ class DatabaseHelper {
     if (scheduleId == null) return 0;
 
     return await db.update(
-      'jadwal_ibadah',
+      DatabaseTables.tableJadwal,
       {'is_active': isActive ? 1 : 0},
       where: 'id = ?',
       whereArgs: [scheduleId],
@@ -304,7 +186,7 @@ class DatabaseHelper {
     if (scheduleId == null) return 0;
 
     return await db.delete(
-      'jadwal_ibadah',
+      DatabaseTables.tableJadwal,
       where: 'id = ?',
       whereArgs: [scheduleId],
     );
@@ -318,7 +200,7 @@ class DatabaseHelper {
   Future<List<HistoryModel>> getAllHistories() async {
     final db = await database;
     final List<Map<String, dynamic>> maps =
-        await db.query('riwayat_pelaksanaan', orderBy: 'id DESC');
+        await db.query(DatabaseTables.tableRiwayat, orderBy: 'id DESC');
 
     return maps.map((row) {
       return HistoryModel(
@@ -335,7 +217,7 @@ class DatabaseHelper {
   /// Menambah riwayat ibadah baru
   Future<int> insertHistory(HistoryModel history, {int? jadwalId}) async {
     final db = await database;
-    return await db.insert('riwayat_pelaksanaan', {
+    return await db.insert(DatabaseTables.tableRiwayat, {
       'jadwal_id': jadwalId,
       'title': history.title,
       'tanggal': history.date,
@@ -356,7 +238,7 @@ class DatabaseHelper {
     if (historyId == null) return 0;
 
     return await db.update(
-      'riwayat_pelaksanaan',
+      DatabaseTables.tableRiwayat,
       {
         'status': isCompleted ? 'terlaksana' : 'terlewat',
         'jam_terlaksana': actualTime,
@@ -372,4 +254,3 @@ class DatabaseHelper {
     await db.close();
   }
 }
-
