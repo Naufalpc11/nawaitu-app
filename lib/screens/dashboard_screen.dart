@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../database/database_helper.dart';
 import '../models/history_model.dart';
+import '../widgets/daily_doa_card.dart';
 import '../widgets/schedule_card.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -15,10 +17,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<HistoryModel> _histories = [];
   bool _isLoading = true;
 
+  Timer? _clockTimer;
+  String _currentDate = '';
+  String _currentTime = '';
+
+  static const List<String> _days = [
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu',
+  ];
+
+  static const List<String> _months = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
   @override
   void initState() {
     super.initState();
+    _updateDateTime();
+    // Timer dicek setiap detik agar tepat saat menit berganti, tampilan jam langsung terupdate
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateDateTime();
+    });
     _loadHistories();
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _updateDateTime() {
+    final now = DateTime.now();
+    final dayName = _days[now.weekday - 1];
+    final monthName = _months[now.month - 1];
+    final dateStr = '$dayName, ${now.day} $monthName ${now.year}';
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    if (_currentDate != dateStr || _currentTime != timeStr) {
+      if (mounted) {
+        setState(() {
+          _currentDate = dateStr;
+          _currentTime = timeStr;
+        });
+      } else {
+        _currentDate = dateStr;
+        _currentTime = timeStr;
+      }
+    }
   }
 
   Future<void> _loadHistories() async {
@@ -77,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Senin, 8 September 2026",
+                      _currentDate,
                       // ignore: deprecated_member_use
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         // ignore: deprecated_member_use
@@ -86,7 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "08:30",
+                      _currentTime,
                       style: Theme.of(context).textTheme.displayLarge
                           ?.copyWith(color: Colors.white),
                     ),
@@ -151,7 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 24),
 
               // ==========================================
-              // AREA BAWAH: SCHEDULE LIST (Light Gray: 0xFFF7F7F7)
+              // AREA BAWAH: DO'A HARIAN (API) & JADWAL (SQLITE)
               // ==========================================
               Expanded(
                 child: Container(
@@ -164,48 +227,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   padding: const EdgeInsets.only(top: 24, left: 24, right: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(bottom: 24),
                     children: [
+                      // 1. Kartu Doa Hari Ini (Hasil Hit REST API Online)
+                      const DailyDoaCard(),
+
+                      // 2. Judul Section Jadwal Ibadah
                       Text(
                         "Jadwal Hari Ini",
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF0D5C3A),
-                                ),
-                              )
-                            : _histories.isEmpty
-                                ? const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.only(top: 24.0),
-                                      child: Text(
-                                        'Belum ada jadwal ibadah hari ini',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    physics: const BouncingScrollPhysics(),
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    itemCount: _histories.length,
-                                    itemBuilder: (context, index) {
-                                      final history = _histories[index];
-                                      return ScheduleCard(
-                                        title: history.title,
-                                        time: history.scheduledTime,
-                                        isDone: history.isCompleted,
-                                      );
-                                    },
-                                  ),
-                      ),
+                      const SizedBox(height: 14),
+
+                      // 3. Daftar Kartu dari Database SQLite Lokal
+                      if (_isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.0),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF0D5C3A),
+                            ),
+                          ),
+                        )
+                      else if (_histories.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20.0),
+                            child: Text(
+                              'Belum ada jadwal ibadah hari ini',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._histories.map((history) {
+                          return ScheduleCard(
+                            title: history.title,
+                            time: history.scheduledTime,
+                            isDone: history.isCompleted,
+                          );
+                        }),
                     ],
                   ),
                 ),
