@@ -2,54 +2,33 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/// Model data untuk menampung respon JSON dari API Doa Harian
-class DoaModel {
-  final String judul;
-  final String doaArab;
-  final String arti;
-
-  const DoaModel({
-    required this.judul,
-    required this.doaArab,
-    required this.arti,
-  });
-
-  factory DoaModel.fromJson(Map<String, dynamic> json) {
-    return DoaModel(
-      judul: (json['judul'] as String?)?.trim() ?? 'Doa Harian',
-      doaArab: (json['doa'] as String?)?.trim() ?? '',
-      arti: (json['artinya'] as String?)?.trim() ?? '',
-    );
-  }
-}
+import '../models/hadis_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://api.myquran.com/v2';
-  static const String doaEndpoint = '/doa/acak';
+  static const String baseUrl = 'https://api.myquran.com/v3/hadis/enc';
 
-  /// Melakukan HTTP GET Request ke server internet
-  static Future<DoaModel> fetchDailyDoa() async {
-    final url = Uri.parse('$baseUrl$doaEndpoint');
-    try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+  /// Mengambil 1 Hadis Acak dari API MyQuran (HadeethEnc)
+  /// Dilengkapi filter otomatis agar memprioritaskan hadis yang pendek & padat
+  static Future<HadisModel> fetchDailyHadis({int maxChars = 280}) async {
+    // Coba hingga 3 kali untuk mendapatkan hadis yang ringkas (< 280 karakter)
+    for (int attempt = 0; attempt < 3; attempt++) {
+      final t = DateTime.now().millisecondsSinceEpoch + attempt;
+      final url = Uri.parse('$baseUrl/random?t=$t');
+      final res = await http.get(url).timeout(const Duration(seconds: 8));
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> body = jsonDecode(response.body);
-
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
         if (body['status'] == true && body['data'] != null) {
-          final data = body['data'] as Map<String, dynamic>;
-          return DoaModel.fromJson(data);
-        } else {
-          throw Exception('Format data API tidak sesuai');
+          final hadis =
+              HadisModel.fromJson(body['data'] as Map<String, dynamic>);
+          // Jika teks terjemahannya ringkas atau ini percobaan terakhir, pakai hadis ini
+          if (hadis.terjemahan.length <= maxChars || attempt == 2) {
+            return hadis;
+          }
         }
-      } else {
-        throw Exception(
-          'Gagal mengambil data dari server (Kode: ${response.statusCode})',
-        );
       }
-    } catch (e) {
-      // Tangani jika offline / gagal koneksi
-      rethrow;
     }
+
+    throw Exception('Gagal memuat hadis dari server');
   }
 }

@@ -14,11 +14,7 @@ class DaySelector extends StatelessWidget {
     'Sab',
   ];
 
-  const DaySelector({
-    super.key,
-    required this.selectedDays,
-    this.onDayToggle,
-  });
+  const DaySelector({super.key, required this.selectedDays, this.onDayToggle});
 
   @override
   Widget build(BuildContext context) {
@@ -71,4 +67,3 @@ class DaySelector extends StatelessWidget {
     );
   }
 }
-
