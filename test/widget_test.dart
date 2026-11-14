@@ -109,4 +109,141 @@ void main() {
 
     expect(find.text('08:00 • Terlaksana 08:29'), findsOneWidget);
   });
+
+  test('markMissedSchedulesForToday records terlewat once after delay', () async {
+    await DatabaseHelper.instance.clearAllData();
+
+    await DatabaseHelper.instance.insertSchedule(
+      const ScheduleModel(
+        id: '',
+        title: 'Sholat Dhuha',
+        time: '08:00',
+        days: ['Sab'],
+        description: '4 rakaat',
+        snooze: '15 Menit',
+        isActive: true,
+      ),
+    );
+
+    // Sabtu, 14 November 2026 pukul 08:10 (masih dalam toleransi 15 menit)
+    final withinDelay = DateTime(2026, 11, 14, 8, 10);
+    final beforeDeadlineCount =
+        await DatabaseHelper.instance.markMissedSchedulesForToday(
+      nowOverride: withinDelay,
+    );
+    expect(beforeDeadlineCount, 0);
+
+    // Sabtu, 14 November 2026 pukul 08:20 (sudah lewat 08:00 + 15 menit)
+    final pastDelay = DateTime(2026, 11, 14, 8, 20);
+    final firstMissed =
+        await DatabaseHelper.instance.markMissedSchedulesForToday(
+      nowOverride: pastDelay,
+    );
+    expect(firstMissed, 1);
+
+    // Pemanggilan kedua pada hari yang sama tidak boleh menduplikasi
+    final secondMissed =
+        await DatabaseHelper.instance.markMissedSchedulesForToday(
+      nowOverride: pastDelay,
+    );
+    expect(secondMissed, 0);
+
+    final histories = await DatabaseHelper.instance.getAllHistories();
+    expect(histories.length, 1);
+    expect(histories.first.title, 'Sholat Dhuha');
+    expect(histories.first.isCompleted, isFalse);
+    expect(histories.first.actualTime, '-');
+
+    await DatabaseHelper.instance.clearAllData();
+  });
+
+  test('getTodayDashboardSchedules merges active schedules with 3 statuses', () async {
+    await DatabaseHelper.instance.clearAllData();
+
+    // Sabtu, 14 November 2026 ('Sab')
+    final sabtuPagi = DateTime(2026, 11, 14, 10, 0);
+
+    final s1 = await DatabaseHelper.instance.insertSchedule(
+      const ScheduleModel(
+        id: '',
+        title: 'Subuh',
+        time: '04:30',
+        days: ['Sab'],
+        description: '',
+        snooze: '15 Menit',
+        isActive: true,
+      ),
+    );
+    final s2 = await DatabaseHelper.instance.insertSchedule(
+      const ScheduleModel(
+        id: '',
+        title: 'Dhuha',
+        time: '08:00',
+        days: ['Sab'],
+        description: '',
+        snooze: '15 Menit',
+        isActive: true,
+      ),
+    );
+    await DatabaseHelper.instance.insertSchedule(
+      const ScheduleModel(
+        id: '',
+        title: 'Dzuhur',
+        time: '12:00',
+        days: ['Sab'],
+        description: '',
+        snooze: '15 Menit',
+        isActive: true,
+      ),
+    );
+    // Jadwal hari lain (tidak boleh muncul)
+    await DatabaseHelper.instance.insertSchedule(
+      const ScheduleModel(
+        id: '',
+        title: 'Jumat',
+        time: '12:00',
+        days: ['Jum'],
+        description: '',
+        snooze: '15 Menit',
+        isActive: true,
+      ),
+    );
+
+    await DatabaseHelper.instance.insertHistory(
+      const HistoryModel(
+        id: '',
+        title: 'Subuh',
+        date: 'Sabtu, 14 November 2026',
+        scheduledTime: '04:30',
+        actualTime: '04:35',
+        isCompleted: true,
+      ),
+      jadwalId: int.parse(s1.id),
+    );
+    await DatabaseHelper.instance.insertHistory(
+      const HistoryModel(
+        id: '',
+        title: 'Dhuha',
+        date: 'Sabtu, 14 November 2026',
+        scheduledTime: '08:00',
+        actualTime: '-',
+        isCompleted: false,
+      ),
+      jadwalId: int.parse(s2.id),
+    );
+
+    final items = await DatabaseHelper.instance.getTodayDashboardSchedules(
+      nowOverride: sabtuPagi,
+    );
+
+    expect(items.length, 3);
+    expect(items[0].title, 'Subuh');
+    expect(items[0].status, TodayScheduleStatus.terlaksana);
+    expect(items[1].title, 'Dhuha');
+    expect(items[1].status, TodayScheduleStatus.terlewat);
+    expect(items[2].title, 'Dzuhur');
+    expect(items[2].status, TodayScheduleStatus.belumWaktunya);
+
+    await DatabaseHelper.instance.clearAllData();
+  });
 }

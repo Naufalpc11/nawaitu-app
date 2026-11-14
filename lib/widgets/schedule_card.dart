@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/schedule_model.dart';
+
 class ScheduleCard extends StatelessWidget {
   final String title;
   final String time;
   final bool? isDone;
+  final TodayScheduleStatus? todayStatus;
   final bool? isActive;
   final ValueChanged<bool>? onToggle;
   final VoidCallback? onTap;
@@ -13,6 +16,7 @@ class ScheduleCard extends StatelessWidget {
     required this.title,
     required this.time,
     this.isDone,
+    this.todayStatus,
     this.isActive,
     this.onToggle,
     this.onTap,
@@ -20,13 +24,30 @@ class ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Penentuan styling badge untuk mode dashboard (ketika isDone diberikan)
-    final bool done = isDone ?? false;
-    final Color badgeBgColor =
-        done ? const Color(0xFFD7F5E5) : const Color(0xFFEEEEEE);
-    final Color badgeTextColor =
-        done ? const Color(0xFF0D5C3A) : Colors.grey.shade600;
-    final String badgeText = done ? 'Terlaksana' : 'Belum';
+    // Penentuan styling badge untuk mode dashboard (3 status atau fallback isDone)
+    final TodayScheduleStatus resolvedStatus = todayStatus ??
+        ((isDone ?? false)
+            ? TodayScheduleStatus.terlaksana
+            : TodayScheduleStatus.belumWaktunya);
+
+    final Color badgeBgColor;
+    final Color badgeTextColor;
+    final String badgeText;
+
+    switch (resolvedStatus) {
+      case TodayScheduleStatus.terlaksana:
+        badgeBgColor = const Color(0xFFD7F5E5);
+        badgeTextColor = const Color(0xFF0D5C3A);
+        badgeText = 'Terlaksana';
+      case TodayScheduleStatus.terlewat:
+        badgeBgColor = const Color(0xFFFDE6E6);
+        badgeTextColor = const Color(0xFFE53935);
+        badgeText = 'Terlewat';
+      case TodayScheduleStatus.belumWaktunya:
+        badgeBgColor = const Color(0xFFEEEEEE);
+        badgeTextColor = Colors.grey.shade600;
+        badgeText = 'Belum Waktunya';
+    }
 
     return Container(
       width: double.infinity,
@@ -108,7 +129,7 @@ class ScheduleCard extends StatelessWidget {
                     inactiveThumbColor: Colors.white,
                     inactiveTrackColor: Colors.grey.shade300,
                   )
-                else if (isDone != null)
+                else if (todayStatus != null || isDone != null)
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

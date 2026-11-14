@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../database/database_helper.dart';
-import '../models/history_model.dart';
+import '../models/schedule_model.dart';
 import '../widgets/daily_hadis_card.dart';
 import '../widgets/schedule_card.dart';
 
@@ -16,7 +17,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  List<HistoryModel> _histories = [];
+  List<TodayScheduleItem> _todaySchedules = [];
   bool _isLoading = true;
 
   Timer? _clockTimer;
@@ -60,15 +61,20 @@ class _DashboardScreenState extends State<DashboardScreen>
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateDateTime();
     });
-    _loadHistories();
-    DatabaseHelper.instance.historyChangeNotifier.addListener(_loadHistories);
+    _loadTodaySchedules();
+    DatabaseHelper.instance.historyChangeNotifier
+        .addListener(_loadTodaySchedules);
+    DatabaseHelper.instance.scheduleChangeNotifier
+        .addListener(_loadTodaySchedules);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     DatabaseHelper.instance.historyChangeNotifier
-        .removeListener(_loadHistories);
+        .removeListener(_loadTodaySchedules);
+    DatabaseHelper.instance.scheduleChangeNotifier
+        .removeListener(_loadTodaySchedules);
     _clockTimer?.cancel();
     _sheetController.dispose();
     super.dispose();
@@ -77,7 +83,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadHistories();
+      DatabaseHelper.instance.markMissedSchedulesForToday().then((_) {
+        _loadTodaySchedules();
+      });
     }
   }
 
@@ -114,11 +122,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  Future<void> _loadHistories() async {
-    final data = await DatabaseHelper.instance.getAllHistories();
+  Future<void> _loadTodaySchedules() async {
+    final data = await DatabaseHelper.instance.getTodayDashboardSchedules();
     if (mounted) {
       setState(() {
-        _histories = data;
+        _todaySchedules = data;
         _isLoading = false;
       });
     }
@@ -128,11 +136,19 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
-    final int total = _histories.length;
-    final int completed = _histories.where((item) => item.isCompleted).length;
+    final int total = _todaySchedules.length;
+    final int completed = _todaySchedules
+        .where((item) => item.status == TodayScheduleStatus.terlaksana)
+        .length;
     final double progress = total > 0 ? (completed / total) : 0.0;
 
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
       body: Container(
         width: screenWidth,
         height: double.infinity,
@@ -343,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   ),
                                 ),
                               )
-                            else if (_histories.isEmpty)
+                            else if (_todaySchedules.isEmpty)
                               const Center(
                                 child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 20.0),
@@ -357,11 +373,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 ),
                               )
                             else
-                              ..._histories.map((history) {
+                              ..._todaySchedules.map((item) {
                                 return ScheduleCard(
-                                  title: history.title,
-                                  time: history.scheduledTime,
-                                  isDone: history.isCompleted,
+                                  title: item.title,
+                                  time: item.time,
+                                  todayStatus: item.status,
                                 );
                               }),
                           ],
@@ -373,6 +389,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       ),
+    ),
     );
   }
 }

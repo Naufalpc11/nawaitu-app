@@ -53,7 +53,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadHistories();
+    _syncAndLoadHistories();
     DatabaseHelper.instance.historyChangeNotifier.addListener(_loadHistories);
   }
 
@@ -68,8 +68,13 @@ class _HistoryScreenState extends State<HistoryScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadHistories();
+      _syncAndLoadHistories();
     }
+  }
+
+  Future<void> _syncAndLoadHistories() async {
+    await DatabaseHelper.instance.markMissedSchedulesForToday();
+    await _loadHistories();
   }
 
   Future<void> _loadHistories() async {

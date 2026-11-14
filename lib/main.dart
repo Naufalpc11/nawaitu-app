@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/app_routes.dart';
+import 'database/database_helper.dart';
 import 'screens/create_schedule_screen.dart';
 import 'screens/detail_history_screen.dart';
 import 'screens/detail_schedule_screen.dart';
@@ -17,6 +18,7 @@ void main() async {
   ]);
   await NotificationService.instance.init();
   await NotificationService.instance.syncAllActiveSchedules();
+  await DatabaseHelper.instance.markMissedSchedulesForToday();
   runApp(const MyApp());
   WidgetsBinding.instance.addPostFrameCallback((_) {
     NotificationService.instance.processPendingLaunchNotification();
@@ -37,6 +39,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Manrope',
         scaffoldBackgroundColor: const Color(0xFFF7F7F7),
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
+        ),
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontSize: 56,

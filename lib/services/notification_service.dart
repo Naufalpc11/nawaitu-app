@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -12,6 +13,7 @@ import '../models/schedule_model.dart';
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) async {
   WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
   await NotificationService.handleNotificationResponse(
     notificationResponse,
     showFeedback: false,
@@ -49,7 +51,7 @@ class NotificationService {
   NotificationResponse? _pendingLaunchResponse;
 
   /// Inisialisasi dasar plugin & zona waktu (aman dipanggil dari main maupun background isolate)
-  Future<void> _ensurePluginInitialized() async {
+  Future<void> _ensurePluginInitialized({bool createChannel = true}) async {
     if (_isInitialized) return;
 
     _configureLocalTimeZone();
@@ -69,19 +71,21 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
-    // Daftarkan Notification Channel di Android 8.0+
-    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.createNotificationChannel(
-      const AndroidNotificationChannel(
-        _channelId,
-        _channelName,
-        description: _channelDesc,
-        importance: Importance.max,
-        playSound: true,
-        enableVibration: true,
-      ),
-    );
+    if (createChannel) {
+      // Daftarkan Notification Channel di Android 8.0+
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _channelId,
+          _channelName,
+          description: _channelDesc,
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    }
 
     _isInitialized = true;
   }
@@ -143,14 +147,81 @@ class NotificationService {
     tz.setLocalLocation(tz.UTC);
   }
 
+  /// Mengecek apakah izin notifikasi dan alarm presisi sudah aktif
+  Future<bool> hasAllRequiredPermissions() async {
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final bool notifEnabled =
+        await androidPlugin?.areNotificationsEnabled() ?? true;
+    final bool canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? true;
+    return notifEnabled && canExact;
+  }
+
   /// Meminta izin notifikasi & alarm presisi bila belum diberikan
   Future<void> ensurePermissions() async {
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.requestNotificationsPermission();
-    final canExact = await androidPlugin?.canScheduleExactNotifications();
-    if (canExact == false) {
-      await androidPlugin?.requestExactAlarmsPermission();
+
+    final bool notifEnabled =
+        await androidPlugin?.areNotificationsEnabled() ?? true;
+    if (!notifEnabled) {
+      await androidPlugin?.requestNotificationsPermission();
+    }
+
+    final bool canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? true;
+    if (!canExact) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        final bool? openSettings = await showDialog<bool>(
+          context: ctx,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: const Text(
+              'Izin Alarm Presisi',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            content: const Text(
+              'Agar pengingat ibadah dan fitur Ingatkan Nanti (snooze) muncul tepat waktu tanpa tertunda sistem baterai, aktifkan izin "Alarm & pengingat" untuk Nawaitu.',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(
+                  'Nanti',
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D5C3A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Buka Pengaturan'),
+              ),
+            ],
+          ),
+        );
+        if (openSettings == true) {
+          await androidPlugin?.requestExactAlarmsPermission();
+        }
+      } else {
+        await androidPlugin?.requestExactAlarmsPermission();
+      }
     }
   }
 
@@ -181,6 +252,7 @@ class NotificationService {
           title: title,
           scheduledTime: scheduledTime,
           snoozeMinutes: snoozeMinutes,
+          createChannel: showFeedback,
         );
         if (showFeedback) {
           final messenger = instance.scaffoldMessengerKey.currentState;
@@ -199,7 +271,7 @@ class NotificationService {
       }
 
       if (jadwalId != null) {
-        await instance._ensurePluginInitialized();
+        await instance._ensurePluginInitialized(createChannel: showFeedback);
         await instance._plugin.cancel(id: instance._snoozeNotificationId(jadwalId));
       }
 
@@ -236,15 +308,16 @@ class NotificationService {
     required String title,
     required String scheduledTime,
     required int snoozeMinutes,
+    bool createChannel = true,
   }) async {
-    await _ensurePluginInitialized();
+    await _ensurePluginInitialized(createChannel: createChannel);
 
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     final bool canExact =
         await androidPlugin?.canScheduleExactNotifications() ?? false;
     final AndroidScheduleMode scheduleMode = canExact
-        ? AndroidScheduleMode.exactAllowWhileIdle
+        ? AndroidScheduleMode.alarmClock
         : AndroidScheduleMode.inexactAllowWhileIdle;
 
     final int notifId =
@@ -269,7 +342,6 @@ class NotificationService {
       scheduledDate: snoozeDate,
       notificationDetails: _buildNotificationDetails(
         subtitle: bodyText,
-        snoozeMinutes: snoozeMinutes,
       ),
       androidScheduleMode: scheduleMode,
       payload: payload,
@@ -278,7 +350,6 @@ class NotificationService {
 
   NotificationDetails _buildNotificationDetails({
     String? subtitle,
-    int snoozeMinutes = 15,
   }) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
@@ -290,19 +361,20 @@ class NotificationService {
         playSound: true,
         enableVibration: true,
         autoCancel: true,
+        visibility: NotificationVisibility.public,
         styleInformation: subtitle != null && subtitle.isNotEmpty
             ? BigTextStyleInformation(subtitle)
             : null,
-        actions: <AndroidNotificationAction>[
-          const AndroidNotificationAction(
+        actions: const <AndroidNotificationAction>[
+          AndroidNotificationAction(
             'mark_done',
             'Tandai Terlaksana',
-            showsUserInterface: true,
+            showsUserInterface: false,
             cancelNotification: true,
           ),
           AndroidNotificationAction(
             'snooze',
-            'Ingatkan Nanti (+$snoozeMinutes mnt)',
+            'Ingatkan Nanti',
             showsUserInterface: false,
             cancelNotification: true,
           ),
@@ -355,7 +427,7 @@ class NotificationService {
     final bool canExact =
         await androidPlugin?.canScheduleExactNotifications() ?? false;
     final AndroidScheduleMode scheduleMode = canExact
-        ? AndroidScheduleMode.exactAllowWhileIdle
+        ? AndroidScheduleMode.alarmClock
         : AndroidScheduleMode.inexactAllowWhileIdle;
 
     final int snoozeMinutes =
@@ -389,7 +461,6 @@ class NotificationService {
         scheduledDate: scheduledDate,
         notificationDetails: _buildNotificationDetails(
           subtitle: bodyText,
-          snoozeMinutes: snoozeMinutes,
         ),
         androidScheduleMode: scheduleMode,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,

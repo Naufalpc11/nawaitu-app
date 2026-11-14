@@ -15,6 +15,9 @@ class DatabaseHelper {
   /// Notifier agar DashboardScreen & HistoryScreen otomatis refresh saat riwayat berubah (misal dari tap notifikasi)
   final ValueNotifier<int> historyChangeNotifier = ValueNotifier<int>(0);
 
+  /// Notifier agar DashboardScreen otomatis refresh saat jadwal ditambah, diedit, dihapus, atau di-toggle
+  final ValueNotifier<int> scheduleChangeNotifier = ValueNotifier<int>(0);
+
   DatabaseHelper._init();
 
   /// Mendapatkan instance database SQLite (lazily opened)
@@ -120,6 +123,7 @@ class DatabaseHelper {
       });
     }
 
+    scheduleChangeNotifier.value++;
     return schedule.copyWith(id: newId.toString());
   }
 
@@ -159,6 +163,7 @@ class DatabaseHelper {
       });
     }
 
+    scheduleChangeNotifier.value++;
     return count;
   }
 
@@ -168,12 +173,14 @@ class DatabaseHelper {
     final int? scheduleId = int.tryParse(id);
     if (scheduleId == null) return 0;
 
-    return await db.update(
+    final count = await db.update(
       DatabaseTables.tableJadwal,
       {'is_active': isActive ? 1 : 0},
       where: 'id = ?',
       whereArgs: [scheduleId],
     );
+    scheduleChangeNotifier.value++;
+    return count;
   }
 
   /// Menghapus jadwal ibadah (otomatis cascade menghapus hari_jadwal)
@@ -182,11 +189,13 @@ class DatabaseHelper {
     final int? scheduleId = int.tryParse(id);
     if (scheduleId == null) return 0;
 
-    return await db.delete(
+    final count = await db.delete(
       DatabaseTables.tableJadwal,
       where: 'id = ?',
       whereArgs: [scheduleId],
     );
+    scheduleChangeNotifier.value++;
+    return count;
   }
 
   // ==========================================
@@ -249,6 +258,45 @@ class DatabaseHelper {
     return count;
   }
 
+  static const List<String> _fullDays = [
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu',
+  ];
+
+  static const List<String> _shortDays = [
+    'Sen',
+    'Sel',
+    'Rab',
+    'Kam',
+    'Jum',
+    'Sab',
+    'Ahd',
+  ];
+
+  static const List<String> _months = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
+  String _formatIndonesianDate(DateTime date) {
+    return '${_fullDays[date.weekday - 1]}, ${date.day} ${_months[date.month - 1]} ${date.year}';
+  }
+
   /// Mencatat atau memperbarui ibadah sebagai "Terlaksana" saat user menekan notifikasi
   Future<HistoryModel> markCompletedFromNotification({
     int? jadwalId,
@@ -257,33 +305,7 @@ class DatabaseHelper {
   }) async {
     final db = await database;
     final now = DateTime.now();
-
-    const days = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-
-    final todayDate =
-        '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+    final todayDate = _formatIndonesianDate(now);
     final actualTime =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
@@ -342,6 +364,123 @@ class DatabaseHelper {
       actualTime: actualTime,
       isCompleted: true,
     );
+  }
+
+  /// Mencatat otomatis jadwal aktif hari ini sebagai "Terlewat"
+  /// jika sudah melewati jam_pengingat + jeda_delay dan belum ada riwayatnya.
+  Future<int> markMissedSchedulesForToday({DateTime? nowOverride}) async {
+    final db = await database;
+    final now = nowOverride ?? DateTime.now();
+    final todayDate = _formatIndonesianDate(now);
+    final todayShortDay = _shortDays[now.weekday - 1];
+
+    final schedules = await getAllSchedules();
+    int insertedCount = 0;
+
+    for (final schedule in schedules) {
+      if (!schedule.isActive || !schedule.days.contains(todayShortDay)) {
+        continue;
+      }
+
+      final int? jadwalId = int.tryParse(schedule.id);
+      if (jadwalId == null) continue;
+
+      final timeParts = schedule.time.split(':');
+      if (timeParts.length < 2) continue;
+      final int? hour = int.tryParse(timeParts[0]);
+      final int? minute = int.tryParse(timeParts[1]);
+      if (hour == null || minute == null) continue;
+
+      final int delayMinutes =
+          int.tryParse(schedule.snooze.replaceAll(RegExp(r'[^0-9]'), '')) ?? 15;
+      final scheduledDateTime =
+          DateTime(now.year, now.month, now.day, hour, minute);
+      final deadline = scheduledDateTime.add(Duration(minutes: delayMinutes));
+
+      if (!now.isAfter(deadline)) continue;
+
+      final existing = await db.query(
+        DatabaseTables.tableRiwayat,
+        where: 'jadwal_id = ? AND tanggal = ?',
+        whereArgs: [jadwalId, todayDate],
+        limit: 1,
+      );
+
+      if (existing.isEmpty) {
+        await db.insert(DatabaseTables.tableRiwayat, {
+          'jadwal_id': jadwalId,
+          'title': schedule.title,
+          'tanggal': todayDate,
+          'jam_terjadwal': schedule.time,
+          'jam_terlaksana': '-',
+          'status': 'terlewat',
+        });
+        insertedCount++;
+      }
+    }
+
+    if (insertedCount > 0) {
+      historyChangeNotifier.value++;
+    }
+    return insertedCount;
+  }
+
+  /// Mengambil daftar jadwal aktif hari ini beserta status pelaksanaannya
+  /// (Terlaksana / Terlewat / Belum Waktunya) untuk Dashboard.
+  Future<List<TodayScheduleItem>> getTodayDashboardSchedules({
+    DateTime? nowOverride,
+  }) async {
+    final db = await database;
+    final now = nowOverride ?? DateTime.now();
+    final todayDate = _formatIndonesianDate(now);
+    final todayShortDay = _shortDays[now.weekday - 1];
+
+    final allSchedules = await getAllSchedules();
+    final todaySchedules = allSchedules
+        .where((s) => s.isActive && s.days.contains(todayShortDay))
+        .toList()
+      ..sort((a, b) => a.time.compareTo(b.time));
+
+    final List<Map<String, dynamic>> todayHistories = await db.query(
+      DatabaseTables.tableRiwayat,
+      where: 'tanggal = ?',
+      whereArgs: [todayDate],
+    );
+
+    final Map<int, String> statusByJadwalId = {};
+    final Map<String, String> statusByTitleTime = {};
+    for (final row in todayHistories) {
+      final status = (row['status'] as String).toLowerCase();
+      final int? jadwalId = row['jadwal_id'] as int?;
+      if (jadwalId != null) {
+        statusByJadwalId[jadwalId] = status;
+      }
+      final key = '${row['title']}|${row['jam_terjadwal']}';
+      statusByTitleTime[key] = status;
+    }
+
+    return todaySchedules.map((schedule) {
+      final int? jadwalId = int.tryParse(schedule.id);
+      final String? recordedStatus = (jadwalId != null
+              ? statusByJadwalId[jadwalId]
+              : null) ??
+          statusByTitleTime['${schedule.title}|${schedule.time}'];
+
+      final TodayScheduleStatus status;
+      if (recordedStatus == 'terlaksana') {
+        status = TodayScheduleStatus.terlaksana;
+      } else if (recordedStatus == 'terlewat') {
+        status = TodayScheduleStatus.terlewat;
+      } else {
+        status = TodayScheduleStatus.belumWaktunya;
+      }
+
+      return TodayScheduleItem(
+        title: schedule.title,
+        time: schedule.time,
+        status: status,
+      );
+    }).toList();
   }
 
   /// Menutup koneksi database

@@ -1,3 +1,21 @@
+enum TodayScheduleStatus {
+  terlaksana,
+  terlewat,
+  belumWaktunya,
+}
+
+class TodayScheduleItem {
+  final String title;
+  final String time;
+  final TodayScheduleStatus status;
+
+  const TodayScheduleItem({
+    required this.title,
+    required this.time,
+    required this.status,
+  });
+}
+
 class ScheduleModel {
   final String id;
   final String title;
