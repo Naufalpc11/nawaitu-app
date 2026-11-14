@@ -72,18 +72,33 @@ class HistoryCard extends StatelessWidget {
                             color: Colors.grey,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            history.scheduledTime,
-                            style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: Colors.grey,
-                                    ) ??
-                                const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
+                          Flexible(
+                            child: Text(
+                              history.isCompleted &&
+                                      history.actualTime.isNotEmpty &&
+                                      history.actualTime != '-'
+                                  ? '${history.scheduledTime} • Terlaksana ${history.actualTime}'
+                                  : history.scheduledTime,
+                              style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: history.isCompleted
+                                            ? const Color(0xFF0D5C3A)
+                                            : Colors.grey,
+                                        fontWeight: history.isCompleted
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                      ) ??
+                                  TextStyle(
+                                    fontSize: 12,
+                                    color: history.isCompleted
+                                        ? const Color(0xFF0D5C3A)
+                                        : Colors.grey,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),

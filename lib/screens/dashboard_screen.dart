@@ -14,7 +14,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   List<HistoryModel> _histories = [];
   bool _isLoading = true;
 
@@ -53,19 +54,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _updateDateTime();
     // Timer dicek setiap detik agar tepat saat menit berganti, tampilan jam langsung terupdate
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateDateTime();
     });
     _loadHistories();
+    DatabaseHelper.instance.historyChangeNotifier.addListener(_loadHistories);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    DatabaseHelper.instance.historyChangeNotifier
+        .removeListener(_loadHistories);
     _clockTimer?.cancel();
     _sheetController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadHistories();
+    }
   }
 
   void _toggleSheet() {

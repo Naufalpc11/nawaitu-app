@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_routes.dart';
+import '../database/database_helper.dart';
 import '../models/schedule_model.dart';
+import '../services/notification_service.dart';
 import '../widgets/day_selector.dart';
 import '../widgets/description_card.dart';
 import '../widgets/setting_tile.dart';
@@ -59,9 +61,23 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
     );
 
     if (updated is ScheduleModel) {
+      // Langsung simpan ke SQLite dan perbarui alarm notifikasi begitu user menekan Simpan Perubahan
+      await DatabaseHelper.instance.updateSchedule(updated);
+      if (updated.isActive) {
+        await NotificationService.instance.ensurePermissions();
+      }
+      await NotificationService.instance.scheduleForSchedule(updated);
+
+      if (!mounted) return;
       setState(() {
         _currentSchedule = updated;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Jadwal "${updated.title}" berhasil diperbarui.'),
+          backgroundColor: const Color(0xFF0D5C3A),
+        ),
+      );
     }
   }
 
@@ -110,8 +126,14 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.pop(context, _currentSchedule);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
@@ -314,6 +336,7 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

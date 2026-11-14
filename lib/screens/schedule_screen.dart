@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/app_routes.dart';
 import '../database/database_helper.dart';
 import '../models/schedule_model.dart';
+import '../services/notification_service.dart';
 import '../widgets/empty_state_view.dart';
 import '../widgets/schedule_card.dart';
 
@@ -38,17 +39,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (result is ScheduleModel) {
       final inserted = await DatabaseHelper.instance.insertSchedule(result);
+      await NotificationService.instance.ensurePermissions();
+      await NotificationService.instance.scheduleForSchedule(inserted);
+      if (!mounted) return;
       setState(() {
         _schedules.add(inserted);
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Jadwal "${result.title}" berhasil ditambahkan!'),
-            backgroundColor: const Color(0xFF0D5C3A),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Jadwal "${result.title}" berhasil ditambahkan!'),
+          backgroundColor: const Color(0xFF0D5C3A),
+        ),
+      );
     }
   }
 
@@ -64,6 +66,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (result == 'delete') {
       await DatabaseHelper.instance.deleteSchedule(schedule.id);
+      await NotificationService.instance.cancelForSchedule(schedule.id);
       if (!mounted) return;
       setState(() {
         _schedules.removeAt(index);
@@ -75,18 +78,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       );
     } else if (result is ScheduleModel) {
-      await DatabaseHelper.instance.updateSchedule(result);
-      if (!mounted) return;
       setState(() {
         _schedules[index] = result;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Jadwal "${result.title}" berhasil diperbarui.'),
-          backgroundColor: const Color(0xFF0D5C3A),
-        ),
-      );
     }
+  }
+
+  Future<void> _triggerTestNotification() async {
+    final activeSchedules = _schedules.where((s) => s.isActive).toList();
+    final sample = activeSchedules.isNotEmpty
+        ? activeSchedules.first
+        : (_schedules.isNotEmpty ? _schedules.first : null);
+    await NotificationService.instance.showTestNotification(
+      sampleSchedule: sample,
+    );
   }
 
   @override
@@ -113,6 +118,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 10.0),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: _triggerTestNotification,
+              child: Tooltip(
+                message: 'Simulasi Notifikasi',
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_active_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: InkWell(
@@ -155,9 +183,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           schedule.id,
                           newValue,
                         );
+                        final updated = schedule.copyWith(isActive: newValue);
+                        if (newValue) {
+                          await NotificationService.instance
+                              .ensurePermissions();
+                          await NotificationService.instance
+                              .scheduleForSchedule(updated);
+                        } else {
+                          await NotificationService.instance
+                              .cancelForSchedule(updated.id);
+                        }
+                        if (!mounted) return;
                         setState(() {
-                          _schedules[index] =
-                              schedule.copyWith(isActive: newValue);
+                          _schedules[index] = updated;
                         });
                       },
                       onTap: () => _navigateToDetail(index),

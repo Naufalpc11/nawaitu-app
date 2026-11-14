@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -10,6 +11,9 @@ import 'database_tables.dart';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+
+  /// Notifier agar DashboardScreen & HistoryScreen otomatis refresh saat riwayat berubah (misal dari tap notifikasi)
+  final ValueNotifier<int> historyChangeNotifier = ValueNotifier<int>(0);
 
   DatabaseHelper._init();
 
@@ -217,7 +221,7 @@ class DatabaseHelper {
   /// Menambah riwayat ibadah baru
   Future<int> insertHistory(HistoryModel history, {int? jadwalId}) async {
     final db = await database;
-    return await db.insert(DatabaseTables.tableRiwayat, {
+    final id = await db.insert(DatabaseTables.tableRiwayat, {
       'jadwal_id': jadwalId,
       'title': history.title,
       'tanggal': history.date,
@@ -225,6 +229,8 @@ class DatabaseHelper {
       'jam_terlaksana': history.actualTime,
       'status': history.isCompleted ? 'terlaksana' : 'terlewat',
     });
+    historyChangeNotifier.value++;
+    return id;
   }
 
   /// Mengubah status suatu riwayat (Terlaksana <-> Terlewat)
@@ -237,7 +243,7 @@ class DatabaseHelper {
     final int? historyId = int.tryParse(id);
     if (historyId == null) return 0;
 
-    return await db.update(
+    final count = await db.update(
       DatabaseTables.tableRiwayat,
       {
         'status': isCompleted ? 'terlaksana' : 'terlewat',
@@ -245,6 +251,103 @@ class DatabaseHelper {
       },
       where: 'id = ?',
       whereArgs: [historyId],
+    );
+    historyChangeNotifier.value++;
+    return count;
+  }
+
+  /// Mencatat atau memperbarui ibadah sebagai "Terlaksana" saat user menekan notifikasi
+  Future<HistoryModel> markCompletedFromNotification({
+    int? jadwalId,
+    required String title,
+    required String scheduledTime,
+  }) async {
+    final db = await database;
+    final now = DateTime.now();
+
+    const days = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    final todayDate =
+        '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+    final actualTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    // Cek apakah hari ini sudah ada catatan untuk jadwal ini agar tidak duplikat jika notif ditekan ulang
+    final List<Map<String, dynamic>> existing = jadwalId != null
+        ? await db.query(
+            DatabaseTables.tableRiwayat,
+            where: 'jadwal_id = ? AND tanggal = ?',
+            whereArgs: [jadwalId, todayDate],
+            limit: 1,
+          )
+        : await db.query(
+            DatabaseTables.tableRiwayat,
+            where: 'title = ? AND jam_terjadwal = ? AND tanggal = ?',
+            whereArgs: [title, scheduledTime, todayDate],
+            limit: 1,
+          );
+
+    if (existing.isNotEmpty) {
+      final int rowId = existing.first['id'] as int;
+      await db.update(
+        DatabaseTables.tableRiwayat,
+        {
+          'status': 'terlaksana',
+          'jam_terlaksana': actualTime,
+        },
+        where: 'id = ?',
+        whereArgs: [rowId],
+      );
+      historyChangeNotifier.value++;
+      return HistoryModel(
+        id: rowId.toString(),
+        title: title,
+        date: todayDate,
+        scheduledTime: scheduledTime,
+        actualTime: actualTime,
+        isCompleted: true,
+      );
+    }
+
+    final int newId = await db.insert(DatabaseTables.tableRiwayat, {
+      'jadwal_id': jadwalId,
+      'title': title,
+      'tanggal': todayDate,
+      'jam_terjadwal': scheduledTime,
+      'jam_terlaksana': actualTime,
+      'status': 'terlaksana',
+    });
+    historyChangeNotifier.value++;
+
+    return HistoryModel(
+      id: newId.toString(),
+      title: title,
+      date: todayDate,
+      scheduledTime: scheduledTime,
+      actualTime: actualTime,
+      isCompleted: true,
     );
   }
 

@@ -7,6 +7,7 @@ import 'screens/detail_history_screen.dart';
 import 'screens/detail_schedule_screen.dart';
 import 'screens/edit_schedule_screen.dart';
 import 'screens/main_navigation.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,12 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  await NotificationService.instance.init();
+  await NotificationService.instance.syncAllActiveSchedules();
   runApp(const MyApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    NotificationService.instance.processPendingLaunchNotification();
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -23,6 +29,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NotificationService.instance.navigatorKey,
+      scaffoldMessengerKey: NotificationService.instance.scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: 'Nawaitu',
       // Mengaktifkan font Manrope secara global ke seluruh aplikasi
