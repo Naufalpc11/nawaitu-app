@@ -17,11 +17,11 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   await NotificationService.instance.init();
-  await NotificationService.instance.syncAllActiveSchedules();
-  await DatabaseHelper.instance.markMissedSchedulesForToday();
   runApp(const MyApp());
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    NotificationService.instance.processPendingLaunchNotification();
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await NotificationService.instance.syncAllActiveSchedules();
+    await DatabaseHelper.instance.markMissedSchedulesForToday();
+    await NotificationService.instance.processPendingLaunchNotification();
   });
 }
 

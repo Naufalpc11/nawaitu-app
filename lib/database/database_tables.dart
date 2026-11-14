@@ -36,7 +36,7 @@ class DatabaseTables {
       CREATE TABLE $tableRiwayat (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         jadwal_id INTEGER,
-        title TEXT NOT NULL,
+        nama TEXT NOT NULL,
         tanggal TEXT NOT NULL,
         jam_terjadwal TEXT NOT NULL,
         jam_terlaksana TEXT NOT NULL,

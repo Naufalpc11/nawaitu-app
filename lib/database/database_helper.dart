@@ -33,7 +33,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onConfigure: (db) async {
         // Mengaktifkan fitur Foreign Key constraint di SQLite
         await db.execute('PRAGMA foreign_keys = ON');
@@ -43,11 +43,31 @@ class DatabaseHelper {
         await DatabaseTables.createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Menghapus data lama jika versi dinaikkan agar database kembali bersih dari awal
-        await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableHari}');
-        await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableRiwayat}');
-        await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableJadwal}');
-        await DatabaseTables.createTables(db);
+        if (oldVersion < 3) {
+          // Skema lama (< v3) tidak kompatibel, buat ulang tabel
+          await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableHari}');
+          await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableRiwayat}');
+          await db.execute('DROP TABLE IF EXISTS ${DatabaseTables.tableJadwal}');
+          await DatabaseTables.createTables(db);
+          return;
+        }
+        if (oldVersion < 4) {
+          // Migrasi v3 -> v4: ubah nama_hari singkatan ('Sen'..'Ahd') ke enum ERD ('senin'..'ahad')
+          for (final entry in _shortToDbDay.entries) {
+            await db.update(
+              DatabaseTables.tableHari,
+              {'nama_hari': entry.value},
+              where: 'nama_hari = ?',
+              whereArgs: [entry.key],
+            );
+          }
+        }
+        if (oldVersion < 5) {
+          // Migrasi v4 -> v5: ubah nama kolom 'title' menjadi 'nama' pada riwayat_pelaksanaan
+          await db.execute(
+            'ALTER TABLE ${DatabaseTables.tableRiwayat} RENAME COLUMN title TO nama',
+          );
+        }
       },
     );
   }
@@ -64,39 +84,67 @@ class DatabaseHelper {
   // OPERASI CRUD: JADWAL IBADAH & HARI
   // ==========================================
 
-  /// Mengambil semua jadwal ibadah beserta list harinya
+  static const Map<String, String> _shortToDbDay = {
+    'Sen': 'senin',
+    'Sel': 'selasa',
+    'Rab': 'rabu',
+    'Kam': 'kamis',
+    'Jum': 'jumat',
+    'Sab': 'sabtu',
+    'Ahd': 'ahad',
+  };
+
+  static const Map<String, String> _dbToShortDay = {
+    'senin': 'Sen',
+    'selasa': 'Sel',
+    'rabu': 'Rab',
+    'kamis': 'Kam',
+    'jumat': 'Jum',
+    'sabtu': 'Sab',
+    'ahad': 'Ahd',
+  };
+
+  /// Mengonversi label hari UI ('Sen') ke nilai enum ERD di DB ('senin')
+  static String toDbDayName(String day) {
+    final trimmed = day.trim();
+    return _shortToDbDay[trimmed] ?? trimmed.toLowerCase();
+  }
+
+  /// Mengonversi nilai enum ERD di DB ('senin') ke label singkat UI ('Sen')
+  static String toDisplayDayName(String dbDay) {
+    final normalized = dbDay.trim().toLowerCase();
+    return _dbToShortDay[normalized] ?? dbDay;
+  }
+
+  /// Mengambil semua jadwal ibadah beserta list harinya (2 query, tanpa N+1)
   Future<List<ScheduleModel>> getAllSchedules() async {
     final db = await database;
     final List<Map<String, dynamic>> schedulesMap =
         await db.query(DatabaseTables.tableJadwal, orderBy: 'id ASC');
+    if (schedulesMap.isEmpty) return [];
 
-    List<ScheduleModel> result = [];
+    final List<Map<String, dynamic>> allDaysMap =
+        await db.query(DatabaseTables.tableHari);
+    final Map<int, List<String>> daysByScheduleId = {};
+    for (final row in allDaysMap) {
+      final int jadwalId = row['jadwal_id'] as int;
+      daysByScheduleId
+          .putIfAbsent(jadwalId, () => <String>[])
+          .add(toDisplayDayName(row['nama_hari'] as String));
+    }
 
-    for (var row in schedulesMap) {
+    return schedulesMap.map((row) {
       final int scheduleId = row['id'] as int;
-
-      // Ambil hari-hari untuk jadwal ini dari tabel hari_jadwal
-      final List<Map<String, dynamic>> daysMap = await db.query(
-        DatabaseTables.tableHari,
-        where: 'jadwal_id = ?',
-        whereArgs: [scheduleId],
-      );
-
-      final List<String> days =
-          daysMap.map((d) => d['nama_hari'] as String).toList();
-
-      result.add(ScheduleModel(
+      return ScheduleModel(
         id: scheduleId.toString(),
         title: row['nama_jadwal'] as String,
         time: row['jam_pengingat'] as String,
-        days: days,
+        days: daysByScheduleId[scheduleId] ?? <String>[],
         description: (row['deskripsi'] as String?) ?? '',
         snooze: '${row['jeda_delay']} Menit',
         isActive: (row['is_active'] as int) == 1,
-      ));
-    }
-
-    return result;
+      );
+    }).toList();
   }
 
   /// Menambah jadwal ibadah baru beserta relasi harinya
@@ -115,11 +163,11 @@ class DatabaseHelper {
       'is_active': schedule.isActive ? 1 : 0,
     });
 
-    // 2. Simpan hari-hari terpilih ke tabel hari_jadwal
+    // 2. Simpan hari-hari terpilih ke tabel hari_jadwal (format enum ERD: 'senin'..'ahad')
     for (var hari in schedule.days) {
       await db.insert(DatabaseTables.tableHari, {
         'jadwal_id': newId,
-        'nama_hari': hari,
+        'nama_hari': toDbDayName(hari),
       });
     }
 
@@ -159,7 +207,7 @@ class DatabaseHelper {
     for (var hari in schedule.days) {
       await db.insert(DatabaseTables.tableHari, {
         'jadwal_id': scheduleId,
-        'nama_hari': hari,
+        'nama_hari': toDbDayName(hari),
       });
     }
 
@@ -211,7 +259,7 @@ class DatabaseHelper {
     return maps.map((row) {
       return HistoryModel(
         id: (row['id'] as int).toString(),
-        title: row['title'] as String,
+        title: row['nama'] as String,
         date: row['tanggal'] as String,
         scheduledTime: row['jam_terjadwal'] as String,
         actualTime: row['jam_terlaksana'] as String,
@@ -225,7 +273,7 @@ class DatabaseHelper {
     final db = await database;
     final id = await db.insert(DatabaseTables.tableRiwayat, {
       'jadwal_id': jadwalId,
-      'title': history.title,
+      'nama': history.title,
       'tanggal': history.date,
       'jam_terjadwal': history.scheduledTime,
       'jam_terlaksana': history.actualTime,
@@ -319,7 +367,7 @@ class DatabaseHelper {
           )
         : await db.query(
             DatabaseTables.tableRiwayat,
-            where: 'title = ? AND jam_terjadwal = ? AND tanggal = ?',
+            where: 'nama = ? AND jam_terjadwal = ? AND tanggal = ?',
             whereArgs: [title, scheduledTime, todayDate],
             limit: 1,
           );
@@ -348,7 +396,7 @@ class DatabaseHelper {
 
     final int newId = await db.insert(DatabaseTables.tableRiwayat, {
       'jadwal_id': jadwalId,
-      'title': title,
+      'nama': title,
       'tanggal': todayDate,
       'jam_terjadwal': scheduledTime,
       'jam_terlaksana': actualTime,
@@ -409,7 +457,7 @@ class DatabaseHelper {
       if (existing.isEmpty) {
         await db.insert(DatabaseTables.tableRiwayat, {
           'jadwal_id': jadwalId,
-          'title': schedule.title,
+          'nama': schedule.title,
           'tanggal': todayDate,
           'jam_terjadwal': schedule.time,
           'jam_terlaksana': '-',
@@ -455,7 +503,7 @@ class DatabaseHelper {
       if (jadwalId != null) {
         statusByJadwalId[jadwalId] = status;
       }
-      final key = '${row['title']}|${row['jam_terjadwal']}';
+      final key = '${row['nama']}|${row['jam_terjadwal']}';
       statusByTitleTime[key] = status;
     }
 

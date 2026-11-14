@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../database/database_helper.dart';
 import '../models/schedule_model.dart';
+import '../widgets/exact_alarm_permission_dialog.dart';
 
 /// Handler background isolate saat tombol aksi notifikasi (tanpa membuka UI) ditekan
 @pragma('vm:entry-point')
@@ -174,48 +175,7 @@ class NotificationService {
     if (!canExact) {
       final ctx = navigatorKey.currentContext;
       if (ctx != null && ctx.mounted) {
-        final bool? openSettings = await showDialog<bool>(
-          context: ctx,
-          builder: (dialogContext) => AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-            title: const Text(
-              'Izin Alarm Presisi',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            content: const Text(
-              'Agar pengingat ibadah dan fitur Ingatkan Nanti (snooze) muncul tepat waktu tanpa tertunda sistem baterai, aktifkan izin "Alarm & pengingat" untuk Nawaitu.',
-              style: TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: Text(
-                  'Nanti',
-                  style: TextStyle(color: Colors.grey.shade700),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D5C3A),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('Buka Pengaturan'),
-              ),
-            ],
-          ),
-        );
+        final bool? openSettings = await showExactAlarmPermissionDialog(ctx);
         if (openSettings == true) {
           await androidPlugin?.requestExactAlarmsPermission();
         }

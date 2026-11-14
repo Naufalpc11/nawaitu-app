@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nawaitu/database/database_helper.dart';
+import 'package:nawaitu/database/database_tables.dart';
 import 'package:nawaitu/main.dart';
 import 'package:nawaitu/models/history_model.dart';
 import 'package:nawaitu/models/schedule_model.dart';
@@ -83,6 +84,13 @@ void main() {
     expect(allSchedules.first.description, '6 rakaat di musholla');
     expect(allSchedules.first.days, ['Sen', 'Rab', 'Jum']);
     expect(allSchedules.first.isActive, isTrue);
+
+    final db = await DatabaseHelper.instance.database;
+    final rawDays = await db.query(DatabaseTables.tableHari);
+    expect(
+      rawDays.map((r) => r['nama_hari']).toList(),
+      ['senin', 'rabu', 'jumat'],
+    );
 
     await DatabaseHelper.instance.clearAllData();
   });

@@ -1,12 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../database/database_helper.dart';
 import '../models/schedule_model.dart';
 import '../widgets/daily_hadis_card.dart';
+import '../widgets/dashboard_clock_header.dart';
 import '../widgets/schedule_card.dart';
+import '../widgets/today_progress_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,47 +20,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   List<TodayScheduleItem> _todaySchedules = [];
   bool _isLoading = true;
 
-  Timer? _clockTimer;
-  String _currentDate = '';
-  String _currentTime = '';
-
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
-
-  static const List<String> _days = [
-    'Senin',
-    'Selasa',
-    'Rabu',
-    'Kamis',
-    'Jumat',
-    'Sabtu',
-    'Minggu',
-  ];
-
-  static const List<String> _months = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember',
-  ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _updateDateTime();
-    // Timer dicek setiap detik agar tepat saat menit berganti, tampilan jam langsung terupdate
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateDateTime();
-    });
     _loadTodaySchedules();
     DatabaseHelper.instance.historyChangeNotifier
         .addListener(_loadTodaySchedules);
@@ -75,7 +41,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         .removeListener(_loadTodaySchedules);
     DatabaseHelper.instance.scheduleChangeNotifier
         .removeListener(_loadTodaySchedules);
-    _clockTimer?.cancel();
     _sheetController.dispose();
     super.dispose();
   }
@@ -101,27 +66,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  void _updateDateTime() {
-    final now = DateTime.now();
-    final dayName = _days[now.weekday - 1];
-    final monthName = _months[now.month - 1];
-    final dateStr = '$dayName, ${now.day} $monthName ${now.year}';
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    if (_currentDate != dateStr || _currentTime != timeStr) {
-      if (mounted) {
-        setState(() {
-          _currentDate = dateStr;
-          _currentTime = timeStr;
-        });
-      } else {
-        _currentDate = dateStr;
-        _currentTime = timeStr;
-      }
-    }
-  }
-
   Future<void> _loadTodaySchedules() async {
     final data = await DatabaseHelper.instance.getTodayDashboardSchedules();
     if (mounted) {
@@ -140,7 +84,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     final int completed = _todaySchedules
         .where((item) => item.status == TodayScheduleStatus.terlaksana)
         .length;
-    final double progress = total > 0 ? (completed / total) : 0.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -173,99 +116,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Header
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 24,
-                        right: 24,
-                        top: 22,
-                        bottom: 14,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Assalamu'alaikum",
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(color: Colors.white),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _currentDate,
-                            // ignore: deprecated_member_use
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  // ignore: deprecated_member_use
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _currentTime,
-                            style: Theme.of(context).textTheme.displayLarge
-                                ?.copyWith(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // 1. Header Jam & Tanggal (terisolasi agar tidak me-rebuild seluruh Dashboard)
+                    const DashboardClockHeader(),
 
                     // 2. Box Progress Jadwal Hari Ini
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 16.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF042F1E),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "$total Jadwal Hari Ini",
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: const Color(0xFF67C29F),
-                                      ),
-                                ),
-                                Text(
-                                  "$completed/$total Terlaksana",
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: const Color(0xFF67C29F),
-                                      ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Stack(
-                              children: [
-                                Container(
-                                  height: 8,
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                Container(
-                                  height: 8,
-                                  width: (screenWidth - 88) * progress,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF16C289),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                    TodayProgressCard(
+                      total: total,
+                      completed: completed,
                     ),
 
                     const SizedBox(height: 12),
