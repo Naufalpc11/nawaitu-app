@@ -16,7 +16,6 @@ class DatabaseTables {
         nama_jadwal TEXT NOT NULL,
         deskripsi TEXT,
         jam_pengingat TEXT NOT NULL,
-        max_popup INTEGER NOT NULL DEFAULT 5,
         jeda_delay INTEGER NOT NULL DEFAULT 15,
         is_active INTEGER NOT NULL DEFAULT 1
       )

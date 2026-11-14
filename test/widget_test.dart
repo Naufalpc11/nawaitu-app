@@ -28,7 +28,6 @@ void main() {
         time: '08:30',
         days: ['Sen', 'Kam'],
         description: '4 rakaat',
-        maxNotification: '5 Kali',
         snooze: '15 Menit',
       ),
     );
@@ -63,7 +62,6 @@ void main() {
         time: '08:30',
         days: ['Sen', 'Kam'],
         description: '4 rakaat',
-        maxNotification: '5 Kali',
         snooze: '15 Menit',
         isActive: true,
       ),

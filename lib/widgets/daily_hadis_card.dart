@@ -67,65 +67,66 @@ class _DailyHadisCardState extends State<DailyHadisCard> {
         children: [
           // Header: Judul, Status & Tombol Refresh
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0C8259).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.format_quote_rounded,
-                      size: 16,
-                      color: Color(0xFF0C8259),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Hadis Hari Ini',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF102A43),
-                    ),
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C8259).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.format_quote_rounded,
+                  size: 16,
+                  color: Color(0xFF0C8259),
+                ),
               ),
-              Row(
-                children: [
-                  if (_hadis != null && !_hasError)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0C8259).withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _hadis!.grade.isNotEmpty ? _hadis!.grade : 'Sahih',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0C8259),
+              const SizedBox(width: 8),
+              const Text(
+                'Hadis Hari Ini',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF102A43),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _hadis != null && !_hasError
+                    ? Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF0C8259).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _hadis!.grade.isNotEmpty ? _hadis!.grade : 'Sahih',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF0C8259),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 18),
-                    color: const Color(0xFF0C8259),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Muat hadis lain',
-                    onPressed: _isLoading ? null : _loadHadis,
-                  ),
-                ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 18),
+                color: const Color(0xFF0C8259),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Muat hadis lain',
+                onPressed: _isLoading ? null : _loadHadis,
               ),
             ],
           ),
@@ -166,12 +167,16 @@ class _DailyHadisCardState extends State<DailyHadisCard> {
                               color: Colors.orange,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Tidak dapat memuat hadis online',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
+                            Flexible(
+                              child: Text(
+                                'Tidak dapat memuat hadis online',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                ),
                               ),
                             ),
                           ],

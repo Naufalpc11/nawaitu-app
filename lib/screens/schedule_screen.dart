@@ -84,16 +84,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  Future<void> _triggerTestNotification() async {
-    final activeSchedules = _schedules.where((s) => s.isActive).toList();
-    final sample = activeSchedules.isNotEmpty
-        ? activeSchedules.first
-        : (_schedules.isNotEmpty ? _schedules.first : null);
-    await NotificationService.instance.showTestNotification(
-      sampleSchedule: sample,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,29 +108,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 10.0),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: _triggerTestNotification,
-              child: Tooltip(
-                message: 'Simulasi Notifikasi',
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.18),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: InkWell(

@@ -122,28 +122,193 @@ class _HistoryScreenState extends State<HistoryScreen>
     return '${date.day} ${_shortMonths[date.month - 1]} ${date.year}';
   }
 
-  Future<void> _pickDateRange() async {
+  Future<DateTime?> _pickSingleDate(DateTime initialDate) {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    return showDatePicker(
       context: context,
+      initialDate: initialDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(now.year + 5, 12, 31),
-      initialDateRange: _selectedDateRange,
-      helpText: 'Pilih Rentang Tanggal',
+      helpText: 'Pilih Tanggal',
       cancelText: 'Batal',
-      confirmText: 'Terapkan',
-      saveText: 'Terapkan',
+      confirmText: 'Pilih',
       builder: (context, child) {
+        final baseTheme = Theme.of(context);
         return Theme(
-          data: Theme.of(context).copyWith(
+          data: baseTheme.copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF0D5C3A),
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black87,
             ),
+            textTheme: baseTheme.textTheme.copyWith(
+              displayLarge: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
           ),
           child: child!,
+        );
+      },
+    );
+  }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime startDate = _selectedDateRange?.start ?? today;
+    DateTime endDate = _selectedDateRange?.end ?? today;
+
+    final picked = await showDialog<DateTimeRange>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Widget buildDateBox({
+              required String label,
+              required DateTime value,
+              required VoidCallback onTap,
+            }) {
+              return InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: onTap,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF0D5C3A).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 16,
+                            color: Color(0xFF0D5C3A),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _formatShortDate(value),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            Icons.edit_calendar_outlined,
+                            size: 16,
+                            color: Colors.grey.shade500,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Pilih Rentang Tanggal',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  buildDateBox(
+                    label: 'Dari Tanggal',
+                    value: startDate,
+                    onTap: () async {
+                      final result = await _pickSingleDate(startDate);
+                      if (result != null) {
+                        setDialogState(() {
+                          startDate = result;
+                          if (endDate.isBefore(startDate)) {
+                            endDate = startDate;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  buildDateBox(
+                    label: 'Sampai Tanggal',
+                    value: endDate,
+                    onTap: () async {
+                      final result = await _pickSingleDate(endDate);
+                      if (result != null) {
+                        setDialogState(() {
+                          endDate = result;
+                          if (startDate.isAfter(endDate)) {
+                            startDate = endDate;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Batal',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(
+                    dialogContext,
+                    DateTimeRange(start: startDate, end: endDate),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D5C3A),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Terapkan'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

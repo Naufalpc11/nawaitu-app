@@ -48,8 +48,8 @@ class NotificationService {
   bool _isInitialized = false;
   NotificationResponse? _pendingLaunchResponse;
 
-  /// Inisialisasi plugin notifikasi lokal & zona waktu lokal perangkat
-  Future<void> init() async {
+  /// Inisialisasi dasar plugin & zona waktu (aman dipanggil dari main maupun background isolate)
+  Future<void> _ensurePluginInitialized() async {
     if (_isInitialized) return;
 
     _configureLocalTimeZone();
@@ -83,6 +83,18 @@ class NotificationService {
       ),
     );
 
+    _isInitialized = true;
+  }
+
+  /// Inisialisasi plugin notifikasi lokal & zona waktu lokal perangkat
+  Future<void> init() async {
+    final wasInitialized = _isInitialized;
+    await _ensurePluginInitialized();
+    if (wasInitialized) return;
+
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+
     // Minta izin notifikasi runtime (wajib untuk Android 13+)
     await androidPlugin?.requestNotificationsPermission();
 
@@ -94,8 +106,6 @@ class NotificationService {
         launchDetails.notificationResponse != null) {
       _pendingLaunchResponse = launchDetails.notificationResponse;
     }
-
-    _isInitialized = true;
   }
 
   /// Memproses notifikasi peluncuran setelah UI MaterialApp siap dirender
@@ -144,7 +154,7 @@ class NotificationService {
     }
   }
 
-  /// Menangani klik notifikasi (atau tombol "Tandai Terlaksana") -> simpan ke SQLite
+  /// Menangani klik notifikasi ("Tandai Terlaksana" atau "Ingatkan Nanti")
   static Future<void> handleNotificationResponse(
     NotificationResponse response, {
     bool showFeedback = true,
@@ -161,6 +171,37 @@ class NotificationService {
       final String title = data['title']?.toString() ?? 'Ibadah';
       final String scheduledTime =
           data['scheduled_time']?.toString() ?? '--:--';
+      final int snoozeMinutes = data['snooze_minutes'] is int
+          ? data['snooze_minutes'] as int
+          : int.tryParse(data['snooze_minutes']?.toString() ?? '') ?? 15;
+
+      if (response.actionId == 'snooze') {
+        await instance.scheduleSnooze(
+          jadwalId: jadwalId,
+          title: title,
+          scheduledTime: scheduledTime,
+          snoozeMinutes: snoozeMinutes,
+        );
+        if (showFeedback) {
+          final messenger = instance.scaffoldMessengerKey.currentState;
+          messenger?.hideCurrentSnackBar();
+          messenger?.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Pengingat "$title" ditunda $snoozeMinutes menit lagi.',
+              ),
+              backgroundColor: const Color(0xFFF59E0B),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (jadwalId != null) {
+        await instance._ensurePluginInitialized();
+        await instance._plugin.cancel(id: instance._snoozeNotificationId(jadwalId));
+      }
 
       final saved =
           await DatabaseHelper.instance.markCompletedFromNotification(
@@ -187,7 +228,58 @@ class NotificationService {
     }
   }
 
-  NotificationDetails _buildNotificationDetails({String? subtitle}) {
+  int _snoozeNotificationId(int jadwalId) => (jadwalId * 10) + 8;
+
+  /// Menjadwalkan 1x pengingat ulang setelah [snoozeMinutes] menit
+  Future<void> scheduleSnooze({
+    int? jadwalId,
+    required String title,
+    required String scheduledTime,
+    required int snoozeMinutes,
+  }) async {
+    await _ensurePluginInitialized();
+
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final bool canExact =
+        await androidPlugin?.canScheduleExactNotifications() ?? false;
+    final AndroidScheduleMode scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    final int notifId =
+        jadwalId != null ? _snoozeNotificationId(jadwalId) : 999008;
+    final tz.TZDateTime snoozeDate =
+        tz.TZDateTime.now(tz.local).add(Duration(minutes: snoozeMinutes));
+
+    final String payload = jsonEncode({
+      'jadwal_id': jadwalId,
+      'title': title,
+      'scheduled_time': scheduledTime,
+      'snooze_minutes': snoozeMinutes,
+    });
+
+    final String bodyText =
+        'Pengingat ulang jadwal pukul $scheduledTime • Ketuk notifikasi untuk menandai sudah terlaksana.';
+
+    await _plugin.zonedSchedule(
+      id: notifId,
+      title: 'Pengingat Ulang: $title',
+      body: bodyText,
+      scheduledDate: snoozeDate,
+      notificationDetails: _buildNotificationDetails(
+        subtitle: bodyText,
+        snoozeMinutes: snoozeMinutes,
+      ),
+      androidScheduleMode: scheduleMode,
+      payload: payload,
+    );
+  }
+
+  NotificationDetails _buildNotificationDetails({
+    String? subtitle,
+    int snoozeMinutes = 15,
+  }) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
@@ -201,11 +293,17 @@ class NotificationService {
         styleInformation: subtitle != null && subtitle.isNotEmpty
             ? BigTextStyleInformation(subtitle)
             : null,
-        actions: const <AndroidNotificationAction>[
-          AndroidNotificationAction(
+        actions: <AndroidNotificationAction>[
+          const AndroidNotificationAction(
             'mark_done',
             'Tandai Terlaksana',
             showsUserInterface: true,
+            cancelNotification: true,
+          ),
+          AndroidNotificationAction(
+            'snooze',
+            'Ingatkan Nanti (+$snoozeMinutes mnt)',
+            showsUserInterface: false,
             cancelNotification: true,
           ),
         ],
@@ -260,10 +358,14 @@ class NotificationService {
         ? AndroidScheduleMode.exactAllowWhileIdle
         : AndroidScheduleMode.inexactAllowWhileIdle;
 
+    final int snoozeMinutes =
+        int.tryParse(schedule.snooze.replaceAll(RegExp(r'[^0-9]'), '')) ?? 15;
+
     final String payload = jsonEncode({
       'jadwal_id': jadwalId,
       'title': schedule.title,
       'scheduled_time': schedule.time,
+      'snooze_minutes': snoozeMinutes,
     });
 
     final String descPart = schedule.description.trim().isNotEmpty
@@ -285,7 +387,10 @@ class NotificationService {
         title: 'Waktunya ${schedule.title}',
         body: bodyText,
         scheduledDate: scheduledDate,
-        notificationDetails: _buildNotificationDetails(subtitle: bodyText),
+        notificationDetails: _buildNotificationDetails(
+          subtitle: bodyText,
+          snoozeMinutes: snoozeMinutes,
+        ),
         androidScheduleMode: scheduleMode,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
         payload: payload,
@@ -293,7 +398,7 @@ class NotificationService {
     }
   }
 
-  /// Membatalkan seluruh notifikasi hari (Sen-Ahd) milik suatu jadwal
+  /// Membatalkan seluruh notifikasi hari (Sen-Ahd) & snooze milik suatu jadwal
   Future<void> cancelForSchedule(String scheduleId) async {
     if (!_isInitialized) return;
     final int? jadwalId = int.tryParse(scheduleId);
@@ -302,6 +407,7 @@ class NotificationService {
     for (int weekday = 1; weekday <= 7; weekday++) {
       await _plugin.cancel(id: _notificationId(jadwalId, weekday));
     }
+    await _plugin.cancel(id: _snoozeNotificationId(jadwalId));
   }
 
   /// Sinkronisasi ulang semua jadwal aktif dari database SQLite saat startup

@@ -4,7 +4,6 @@ class ScheduleModel {
   final String time;
   final List<String> days;
   final String description;
-  final String maxNotification;
   final String snooze;
   final bool isActive;
 
@@ -14,7 +13,6 @@ class ScheduleModel {
     required this.time,
     required this.days,
     required this.description,
-    required this.maxNotification,
     required this.snooze,
     this.isActive = true,
   });
@@ -25,7 +23,6 @@ class ScheduleModel {
     String? time,
     List<String>? days,
     String? description,
-    String? maxNotification,
     String? snooze,
     bool? isActive,
   }) {
@@ -35,7 +32,6 @@ class ScheduleModel {
       time: time ?? this.time,
       days: days ?? this.days,
       description: description ?? this.description,
-      maxNotification: maxNotification ?? this.maxNotification,
       snooze: snooze ?? this.snooze,
       isActive: isActive ?? this.isActive,
     );
@@ -48,7 +44,6 @@ class ScheduleModel {
       'time': time,
       'days': days,
       'description': description,
-      'maxNotification': maxNotification,
       'snooze': snooze,
       'isActive': isActive,
     };
@@ -64,7 +59,6 @@ class ScheduleModel {
               .toList() ??
           <String>[],
       description: map['description'] as String? ?? '',
-      maxNotification: map['maxNotification'] as String? ?? '5 Kali',
       snooze: map['snooze'] as String? ?? '15 Menit',
       isActive: map['isActive'] as bool? ?? true,
     );

@@ -25,16 +25,8 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descController;
   Set<String> _selectedDays = {};
-  String _maxNotification = '5 Kali';
   String _snooze = '15 Menit';
   bool _isInitialized = false;
-
-  final List<String> _maxNotificationOptions = const [
-    '1 Kali',
-    '3 Kali',
-    '5 Kali',
-    '10 Kali',
-  ];
 
   final List<String> _snoozeOptions = const [
     '5 Menit',
@@ -70,7 +62,6 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
         text: scheduleData?.description ?? '',
       );
       _selectedDays = Set<String>.from(scheduleData?.days ?? []);
-      _maxNotification = scheduleData?.maxNotification ?? '5 Kali';
       _snooze = scheduleData?.snooze ?? '15 Menit';
 
       _isInitialized = true;
@@ -132,7 +123,6 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
           time: formattedTime,
           days: _selectedDays.toList(),
           description: _descController.text.trim(),
-          maxNotification: _maxNotification,
           snooze: _snooze,
           isActive: true,
         );
@@ -142,7 +132,6 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
       time: formattedTime,
       days: _selectedDays.toList(),
       description: _descController.text.trim(),
-      maxNotification: _maxNotification,
       snooze: _snooze,
     );
 
@@ -299,42 +288,6 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Maksimal Notifikasi Row
-            SettingTile(
-              label: 'Maksimal Notifikasi',
-              icon: Icons.notifications_active_outlined,
-              iconColor: const Color(0xFFF59E0B),
-              trailingWidget: DropdownButton<String>(
-                value: _maxNotification,
-                underline: const SizedBox(),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: Colors.grey,
-                ),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-                items: _maxNotificationOptions.map((option) {
-                  return DropdownMenuItem<String>(
-                    value: option,
-                    child: Text(option),
-                  );
-                }).toList(),
-                onChanged: (newVal) {
-                  if (newVal != null) {
-                    setState(() {
-                      _maxNotification = newVal;
-                    });
-                  }
-                },
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
             // Jeda (Snooze) Row
             SettingTile(
               label: 'Jeda (Snooze)',
@@ -343,6 +296,10 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
               trailingWidget: DropdownButton<String>(
                 value: _snooze,
                 underline: const SizedBox(),
+                isDense: true,
+                borderRadius: BorderRadius.circular(14),
+                dropdownColor: Colors.white,
+                elevation: 4,
                 icon: const Icon(
                   Icons.keyboard_arrow_down,
                   size: 18,

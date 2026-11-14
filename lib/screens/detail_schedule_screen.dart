@@ -43,7 +43,6 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
             time: '08:30',
             days: [],
             description: '',
-            maxNotification: '5 Kali',
             snooze: '15 Menit',
             isActive: false,
           );
@@ -293,27 +292,6 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
                 color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 12),
-
-            // Maksimal Notifikasi
-            SettingTile(
-              label: 'Maksimal Notifikasi',
-              icon: Icons.notifications_active_outlined,
-              iconColor: const Color(0xFFF59E0B),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              trailingWidget: Text(
-                _currentSchedule.maxNotification,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-
             const SizedBox(height: 12),
 
             // Jeda (Snooze)

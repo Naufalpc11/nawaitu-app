@@ -30,7 +30,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         // Mengaktifkan fitur Foreign Key constraint di SQLite
         await db.execute('PRAGMA foreign_keys = ON');
@@ -88,7 +88,6 @@ class DatabaseHelper {
         time: row['jam_pengingat'] as String,
         days: days,
         description: (row['deskripsi'] as String?) ?? '',
-        maxNotification: '${row['max_popup']} Kali',
         snooze: '${row['jeda_delay']} Menit',
         isActive: (row['is_active'] as int) == 1,
       ));
@@ -101,8 +100,6 @@ class DatabaseHelper {
   Future<ScheduleModel> insertSchedule(ScheduleModel schedule) async {
     final db = await database;
 
-    final int maxPopup =
-        int.tryParse(schedule.maxNotification.replaceAll(RegExp(r'[^0-9]'), '')) ?? 5;
     final int jedaDelay =
         int.tryParse(schedule.snooze.replaceAll(RegExp(r'[^0-9]'), '')) ?? 15;
 
@@ -111,7 +108,6 @@ class DatabaseHelper {
       'nama_jadwal': schedule.title,
       'deskripsi': schedule.description,
       'jam_pengingat': schedule.time,
-      'max_popup': maxPopup,
       'jeda_delay': jedaDelay,
       'is_active': schedule.isActive ? 1 : 0,
     });
@@ -133,8 +129,6 @@ class DatabaseHelper {
     final int? scheduleId = int.tryParse(schedule.id);
     if (scheduleId == null) return 0;
 
-    final int maxPopup =
-        int.tryParse(schedule.maxNotification.replaceAll(RegExp(r'[^0-9]'), '')) ?? 5;
     final int jedaDelay =
         int.tryParse(schedule.snooze.replaceAll(RegExp(r'[^0-9]'), '')) ?? 15;
 
@@ -145,7 +139,6 @@ class DatabaseHelper {
         'nama_jadwal': schedule.title,
         'deskripsi': schedule.description,
         'jam_pengingat': schedule.time,
-        'max_popup': maxPopup,
         'jeda_delay': jedaDelay,
         'is_active': schedule.isActive ? 1 : 0,
       },
