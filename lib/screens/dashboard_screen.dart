@@ -109,25 +109,16 @@ class _DashboardScreenState extends State<DashboardScreen>
           bottom: false,
           child: Stack(
             children: [
-              // ==========================================
-              // LAYER HIJAU (BACKGROUND): HEADER, PROGRESS, & DOA HARI INI (STATIC / TIDAK BISA DI-SCROLL)
-              // ==========================================
               Positioned.fill(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Header Jam & Tanggal (terisolasi agar tidak me-rebuild seluruh Dashboard)
                     const DashboardClockHeader(),
-
-                    // 2. Box Progress Jadwal Hari Ini
                     TodayProgressCard(
                       total: total,
                       completed: completed,
                     ),
-
                     const SizedBox(height: 12),
-
-                    // 3. Kartu Hadis Pilihan (Di-full-kan mengisi area hijau mendekati swipeup sheet)
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
@@ -141,10 +132,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ],
                 ),
               ),
-
-              // ==========================================
-              // LAYER PUTIH (FOREGROUND): SWIPE-UP SHEET JADWAL HARI INI
-              // ==========================================
               DraggableScrollableSheet(
                 controller: _sheetController,
                 initialChildSize: 0.11,
@@ -178,7 +165,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                             bottom: 24,
                           ),
                           children: [
-                            // Handle bar indikator swipe up / down
                             GestureDetector(
                               onTap: _toggleSheet,
                               behavior: HitTestBehavior.opaque,
@@ -194,8 +180,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                               ),
                             ),
                             const SizedBox(height: 12),
-
-                            // Judul Section Jadwal Hari Ini
                             GestureDetector(
                               onTap: _toggleSheet,
                               behavior: HitTestBehavior.opaque,
@@ -205,8 +189,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                               ),
                             ),
                             const SizedBox(height: 14),
-
-                            // Daftar Kartu dari Database SQLite Lokal
                             if (_isLoading)
                               const Center(
                                 child: Padding(

@@ -10,7 +10,7 @@ import '../database/database_helper.dart';
 import '../models/schedule_model.dart';
 import '../widgets/exact_alarm_permission_dialog.dart';
 
-/// Handler background isolate saat tombol aksi notifikasi (tanpa membuka UI) ditekan
+/// Handler background isolate saat tombol aksi notifikasi ditekan.
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,7 +91,7 @@ class NotificationService {
     _isInitialized = true;
   }
 
-  /// Inisialisasi plugin notifikasi lokal & zona waktu lokal perangkat
+  /// Inisialisasi plugin notifikasi dan zona waktu.
   Future<void> init() async {
     final wasInitialized = _isInitialized;
     await _ensurePluginInitialized();
@@ -100,10 +100,8 @@ class NotificationService {
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
-    // Minta izin notifikasi runtime (wajib untuk Android 13+)
     await androidPlugin?.requestNotificationsPermission();
 
-    // Cek apakah aplikasi dibuka dari kondisi tertutup dengan mengetuk notifikasi
     final NotificationAppLaunchDetails? launchDetails =
         await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails != null &&
@@ -113,7 +111,7 @@ class NotificationService {
     }
   }
 
-  /// Memproses notifikasi peluncuran setelah UI MaterialApp siap dirender
+  /// Proses notifikasi peluncuran setelah UI siap.
   Future<void> processPendingLaunchNotification() async {
     final pending = _pendingLaunchResponse;
     if (pending == null) return;
@@ -365,11 +363,11 @@ class NotificationService {
     return scheduledDate;
   }
 
-  /// Menjadwalkan notifikasi mingguan berulang untuk tiap hari aktif pada sebuah ScheduleModel
+  /// Menjadwalkan notifikasi mingguan untuk tiap hari aktif jadwal.
   Future<void> scheduleForSchedule(ScheduleModel schedule) async {
     if (!_isInitialized) await init();
 
-    // Bersihkan jadwal lama terlebih dahulu agar tidak ada notifikasi ganda/sisa
+    // Hapus alarm lama agar tidak ada notifikasi sisa/ganda.
     await cancelForSchedule(schedule.id);
 
     if (!schedule.isActive || schedule.days.isEmpty) return;

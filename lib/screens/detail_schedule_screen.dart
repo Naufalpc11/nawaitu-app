@@ -60,7 +60,6 @@ class _DetailScheduleScreenState extends State<DetailScheduleScreen> {
     );
 
     if (updated is ScheduleModel) {
-      // Langsung simpan ke SQLite dan perbarui alarm notifikasi begitu user menekan Simpan Perubahan
       await DatabaseHelper.instance.updateSchedule(updated);
       if (updated.isActive) {
         await NotificationService.instance.ensurePermissions();

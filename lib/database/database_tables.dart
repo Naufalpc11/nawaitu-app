@@ -1,6 +1,5 @@
 import 'package:sqflite/sqflite.dart';
 
-/// Definisi skema tabel SQLite Nawaitu sesuai dengan Relational Diagram (ERD).
 class DatabaseTables {
   // Nama Tabel
   static const String tableJadwal = 'jadwal_ibadah';
@@ -9,7 +8,6 @@ class DatabaseTables {
 
   /// Membuat ketiga tabel relasional saat database pertama kali diinisialisasi
   static Future<void> createTables(Database db) async {
-    // 1. Tabel jadwal_ibadah (Sesuai ERD)
     await db.execute('''
       CREATE TABLE $tableJadwal (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +19,6 @@ class DatabaseTables {
       )
     ''');
 
-    // 2. Tabel hari_jadwal (Sesuai ERD, relasi 1-ke-N ke jadwal_ibadah)
     await db.execute('''
       CREATE TABLE $tableHari (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,7 +28,6 @@ class DatabaseTables {
       )
     ''');
 
-    // 3. Tabel riwayat_pelaksanaan (Sesuai ERD, relasi 1-ke-N ke jadwal_ibadah)
     await db.execute('''
       CREATE TABLE $tableRiwayat (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,4 +42,3 @@ class DatabaseTables {
     ''');
   }
 }
-

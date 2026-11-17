@@ -1,4 +1,4 @@
-package com.example.nawaitu
+package com.tiarana.nawaitu
 
 import io.flutter.embedding.android.FlutterActivity
 

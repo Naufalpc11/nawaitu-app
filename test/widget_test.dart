@@ -254,4 +254,49 @@ void main() {
 
     await DatabaseHelper.instance.clearAllData();
   });
+
+  test('newly created schedule after deadline is not marked missed today', () async {
+    await DatabaseHelper.instance.clearAllData();
+
+    // Minggu, 15 Nov 2026 pukul 13:37 membuat jadwal Subuh 05:00
+    await DatabaseHelper.instance.insertSchedule(
+      const ScheduleModel(
+        id: '',
+        title: 'Subuh',
+        time: '05:00',
+        days: ['Ahd', 'Sen'],
+        description: '',
+        snooze: '15 Menit',
+        isActive: true,
+      ),
+      nowOverride: DateTime(2026, 11, 15, 13, 37),
+    );
+
+    final missedToday = await DatabaseHelper.instance.markMissedSchedulesForToday(
+      nowOverride: DateTime(2026, 11, 15, 13, 38),
+    );
+    expect(missedToday, 0);
+
+    final dashboardToday =
+        await DatabaseHelper.instance.getTodayDashboardSchedules(
+      nowOverride: DateTime(2026, 11, 15, 13, 38),
+    );
+    expect(dashboardToday, isEmpty);
+
+    // Keesokan harinya (Senin, 16 Nov 2026 pukul 05:20) baru muncul dan dihitung terlewat
+    final missedTomorrow =
+        await DatabaseHelper.instance.markMissedSchedulesForToday(
+      nowOverride: DateTime(2026, 11, 16, 5, 20),
+    );
+    expect(missedTomorrow, 1);
+
+    final dashboardTomorrow =
+        await DatabaseHelper.instance.getTodayDashboardSchedules(
+      nowOverride: DateTime(2026, 11, 16, 5, 20),
+    );
+    expect(dashboardTomorrow.length, 1);
+    expect(dashboardTomorrow.first.status, TodayScheduleStatus.terlewat);
+
+    await DatabaseHelper.instance.clearAllData();
+  });
 }
